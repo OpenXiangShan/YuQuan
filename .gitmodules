@@ -1,0 +1,6 @@
+[submodule "MemoryTools"]
+	path = MemoryTools
+	url = https://github.com/OpenXiangShan/MemoryTools.git
+[submodule "MCSim"]
+	path = MCSim
+	url = git@github.com:OpenXiangShan/MCSim.git
