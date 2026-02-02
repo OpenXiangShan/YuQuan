@@ -2,7 +2,7 @@
 
 本项目拟基于 Chisel 开发开源 DDR3/4/5 内存控制器，向香山开源生态体系提供可自主演进的、开源共享的高性能内存控制器 IP 及相关测试验证工具。
 
-当前版本 DDR4 Baiyang-V0.8 代码已在FPGA部署且经过SPEC CPU2006 基准测试（ref, int+float）Full Trace 满速压力测试。最新版本DDR4 Baiyang-V0.9 代码已在帕拉丁集成香山昆明湖-v2核测试，基于SPEC CPU2006 基准测试（ref, int+float）跑分评估可达 14分/GHz，接近商用MC IP性能水平，该版本拟于2026年春节前后开源。
+当前版本 DDR4 Baiyang-V0.8 代码已在FPGA部署且经过SPEC CPU2006 基准测试（ref, int+float）Full Trace 满速压力测试。最新版本DDR4 Baiyang-V0.9 代码已在帕拉丁集成香山昆明湖-v2核测试，基于SPEC CPU2006 基准测试（ref, int+float）跑分评估可达 14分/GHz，接近商用MC IP性能水平，该版本拟于2026年春节后开源。
 
 玉泉 (YuQuan) 项目主要包括：
 
