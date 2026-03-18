@@ -1,0 +1,26 @@
+name: Sync to Gitee
+
+on:
+  push:
+    branches:
+      - '**'  # 同步所有分支
+  # 可选：也同步 tags
+  # push:
+  #   tags:
+  #     - '*'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史
+
+      - name: Push to Gitee
+        run: |
+          git remote add gitee https://$GITEE_TOKEN@gitee.com/zhuxiaojing2025/YuQuan.git
+          git push --force --mirror gitee
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
