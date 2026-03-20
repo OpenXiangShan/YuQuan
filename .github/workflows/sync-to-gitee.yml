@@ -20,7 +20,7 @@ jobs:
 
       - name: Push to Gitee
         run: |
-          git remote add gitee https://$GITEE_TOKEN@gitee.com/zhuxiaojing2025/YuQuan.git
+          git remote add gitee https://zhuxiaojing2025:$GITEE_TOKEN@gitee.com/zhuxiaojing2025/YuQuan.git
           git push --force --mirror gitee
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
