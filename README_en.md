@@ -1,6 +1,7 @@
 # YuQuan Project
 A Tape-Out-Targeted DDR3/DDR4/DDR5 Memory Controller and Its Agile Development and Verification Toolchain
-中文说明[在此](https://github.com/OpenXiangShan/YuQuan/blob/DDR4_Baiyang_V0.8/README-zh.md).
+
+中文说明[在此](https://github.com/OpenXiangShan/YuQuan/blob/DDR4_Baiyang_V0.8/README_zh.md).
 
 - [YuQuan Project](#yuquan-project)
   - [Introduction](#introduction)
