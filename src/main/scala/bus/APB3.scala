@@ -13,29 +13,29 @@
 *   
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
-package apb
+package bus.apb3
 
 import chisel3._ 
 import chisel3.util._
 
-trait APBParam {
-    val APB_AW = 12
-    val APB_DW = 32
-    val XLEN = 32
+object APBParameters {
+    val addrBits = 12
+    val dataBits = 32
+    val regBits = 32
 }
 
-class APBIO extends Bundle with APBParam {
+class APB3 extends Bundle {
     // clock and rstn
     val pclk = Input(Clock())
     val presetn = Input(Bool())
     // input
-    val paddr = Input(UInt(APB_AW.W))
-    val pwdata = Input(UInt(APB_DW.W))
+    val paddr = Input(UInt(APBParameters.addrBits.W))
+    val pwdata = Input(UInt(APBParameters.dataBits.W))
     val pwrite = Input(Bool())
     val psel = Input(Bool())
     val penable = Input(Bool())
     // output
     val pready = Output(Bool())
-    val prdata = Output(UInt(APB_DW.W))
+    val prdata = Output(UInt(APBParameters.dataBits.W))
     val pslverr = Output(Bool())
 }

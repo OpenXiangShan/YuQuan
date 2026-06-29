@@ -1,14 +1,14 @@
 # YuQuan Project
 A Tape-Out-Targeted DDR3/DDR4/DDR5 Memory Controller and Its Agile Development and Verification Toolchain
 
-中文说明[在此](https://github.com/OpenXiangShan/YuQuan/blob/DDR4_Baiyang_V0.8/README_zh.md).
+For the Chinese version, see [README_zh.md](./README_zh.md).
 
 - [YuQuan Project](#yuquan-project)
   - [Introduction](#introduction)
   - [Open-Source Status](#open-source-status)
   - [Quick Start Guide](#quick-start-guide)
-    - [DDR4 Baiyang-V0.8 generates Verilog](#ddr4-baiyang-v08-generates-verilog)
-    - [DDR4 Baiyang-V0.8 FPGA platform minimal test environment](#ddr4-baiyang-v08-fpga-platform-minimal-test-environment)
+    - [DDR4 Baiyang-V0.9 generates Verilog](#ddr4-baiyang-v09-generates-verilog)
+    - [DDR4 Baiyang-V0.9 FPGA platform minimal test environment](#ddr4-baiyang-v09-fpga-platform-minimal-test-environment)
   - [Open-Source Roadmap](#open-source-roadmap)
     - [FAMSE](#famse)
     - [Other Tools](#other-tools)
@@ -39,15 +39,24 @@ style="width:7.65027in;height:4in" />
 
 ## Open-Source Status
 
-The current version of DDR4 Baiyang-V0.8 code has been deployed on FPGA and has passed the full speed stress test with full memory traces from SPEC CPU2006 benchmark test (ref, int+fp). 
+The current open-source branch is `DDR4_baiyang_v0.9`, which contains the Baiyang v0.9 codebase.
 
-DDR4 Baiyang-V0.8 IP supports:
+DDR4 Baiyang-V0.9 IP supports:
 <p>1.AXI4 bus interface protocol</p>
 <p>2.DFI3.1 PHY bus interface protocol</p>
 <p>3.DDR4-2400</p>
-For details, refer to Baiyang IP Design Document-v8.0. 
+For details, refer to Baiyang IP Design Document-v8.0.
 
-The upcoming DDR4 Baiyang-V0.9 release has been integrated with the Xiangshan Kunminghu-V2 core on the Cadence Palladium Z2 emulation platform. Based on SPEC CPU2006 benchmark testing (ref, int+fp), the evaluated performance reaches 14 points/GHz, approaching the performance level of commercial memory controller IP. This release is expected within 3 months. We also plan to release Testing Environment with Xiangshan Nanhu core.</p>
+This branch has been integrated with the Xiangshan Kunminghu-V2 core on the Cadence Palladium Z2 emulation platform. Based on SPEC CPU2006 benchmark testing (ref, int+fp), the evaluated performance reaches 14 points/GHz, approaching the performance level of commercial memory controller IP.
+
+Compared with DDR4 Baiyang-V0.8, the main v0.9 updates include:
+<p>1.Static virtual channel support in AXI2UI, enabling limited out-of-order response returns across multiple AXI IDs</p>
+<p>2.Write mask support in the SCG path</p>
+<p>3.Merge of the write command queue and write data queue in the Filter module, along with UI write interface updates</p>
+<p>4.Refresh-related bug fixes, including the `tRP_timer` issue and the burst refresh bug</p>
+Detailed v0.8-to-v0.9 changes are provided in the accompanying `Key_changes.md` release note.
+
+The previous DDR4 Baiyang-V0.8 baseline was deployed on FPGA and passed the full-speed stress test with full memory traces from SPEC CPU2006 benchmark test (ref, int+fp).
 
 The currently open-sourced agile development and verification tools include MCSim and TinyPHY. 
 
@@ -58,12 +67,12 @@ TinyPHY emulates PHY functionality on FPGA platforms, correctly handling DFI int
 For detailed documentation and usage, refer to [TinyPhy](https://github.com/OpenXiangShan/MemoryTools/blob/master/TinyPHY/README.md) and [MCSim](https://github.com/OpenXiangShan/MCSim/blob/MCSim-v1.0/README.md).
 
 ## Quick Start Guide
-### DDR4 Baiyang-V0.8 generates Verilog
+### DDR4 Baiyang-V0.9 generates Verilog
 <p>Run "make verilog" to generate verilog code.This command will generate multiple .sv files in the build/ directory.</p>
 <p>See the Makefile for more information.</p>
 
-### DDR4 Baiyang-V0.8 FPGA platform minimal test environment
-<p>To facilitate deployment of DDR4 Baiyang-V0.8 on FPGA platforms, we constructed a minimal test environment integrating a MicroBlaze core, the Baiyang IP and TinyPHY —— a programmable PHY simulator.</p>
+### DDR4 Baiyang-V0.9 FPGA platform minimal test environment
+<p>To facilitate deployment of DDR4 Baiyang-V0.9 on FPGA platforms, we constructed a minimal test environment integrating a MicroBlaze core, the Baiyang IP and TinyPHY —— a programmable PHY simulator.</p>
 <p>For more information, see the .md file and Makefile of the Release version DDR4-Baiyang-fpga-V1.0.tar.gz or DDR4-Baiyang-fpga-V1.0.zip.</p>
 
 ## Open-Source Roadmap

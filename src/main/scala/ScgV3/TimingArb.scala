@@ -19,8 +19,13 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
 import BUNDLE_PARAM._
-import apb.SCGRegIO
-import apb.APBSlvtop
+import ujson.False
+import APB.SCGRegIO
+import APB.APBSlvtop
+import javax.print.DocFlavor.READER
+import scribe.ANSI.bg
+import java.util.concurrent.Flow
+import os.stat
 import chisel3.experimental.BundleLiterals._
 
 class TimingDFIPhase extends Bundle {
@@ -370,6 +375,10 @@ class TimingArb extends Module{
     rtwDiffRankTimer := Mux(rtwDiffRankTimer === 0.U , 0.U ,rtwDiffRankTimer - 1.U)
 
     // act > cas > pre
+    // if there is only one cmd, then it is always in slot0
+    // act always in slot0
+    // if has others, pre always in slot1
+    // if has act, cas in slot1, otherwise in slot0
     val casBg = casChosen(BGBITS + BABITS - 1, BABITS)
     val casRead = io.cmdGen(casChosen).casRead
 

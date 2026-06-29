@@ -14,10 +14,12 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 package OpenMc
+
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
-
+import java.util.ResourceBundle
+//import scala.annotation.newMain
 
 /******************************************************************** IO for test*******************************************************************/
 class TEST_IO extends Bundle{
@@ -86,6 +88,25 @@ class AXI_RIO extends Bundle{
     val rready  = Input(Bool())                             // AXI read ready 
 }
 
+class AXIWriteAddrInfo extends Bundle{
+    val addr  = UInt(AXI_PARAM.AXI_ADDRW.W)
+    val burst = UInt(AXI_PARAM.AXI_BURSTW.W)
+    val len   = UInt(AXI_PARAM.AXI_LENW.W)
+    val size  = UInt(AXI_PARAM.AXI_SIZEW.W)
+    val qos   = UInt(AXI_PARAM.AXI_QOSW.W)
+}
+
+class AXIWriteDataInfo extends Bundle{
+    val data = UInt(AXI_PARAM.AXI_DATAW.W)
+    val strb = UInt(AXI_PARAM.AXI_STRBW.W)
+    val last = Bool()
+}
+
+class AXIWriteRespInfo extends Bundle{
+    val id   = UInt(AXI_PARAM.AXI_IDW.W)
+    val user = UInt(AXI_PARAM.AXI_USERW.W)
+}
+
 
 /******************************************************************** axi_token IO *******************************************************************/
 class TOKEN_IO extends Bundle{
@@ -152,4 +173,38 @@ class CONS_ADDR_IO extends Bundle{
     val addr_end    =   Output(Vec(TABLE_DEPTH+1, UInt((AXI_PARAM.AXI_ADDRW*2).W)))
     val axi_ptr     =   Output(UInt(PTR_WIDTH.W))
     val ui_ptr      =   Output(UInt(PTR_WIDTH.W))    
+}
+
+
+
+
+/********************************************************************  *******************************************************************/
+class  UnSplitCommandQueueBundle extends  Bundle{
+    val addr  = UInt(AXI_PARAM.AXI_ADDRW.W)
+    val id    = UInt(AXI_PARAM.AXI_IDW.W)
+    val burst = UInt(AXI_PARAM.AXI_BURSTW.W)
+    val len   = UInt(AXI_PARAM.AXI_LENW.W)
+    val size  = UInt(AXI_PARAM.AXI_SIZEW.W)
+    val qos   = UInt(AXI_PARAM.AXI_QOSW.W)
+}
+
+class  SplitCommandQueueBundle (IDW : Int)extends  Bundle{
+    val addr  = UInt(AXI_PARAM.AXI_ADDRW.W)
+    val id    = UInt(AXI_PARAM.AXI_IDW.W)
+    val len   = UInt(AXI_PARAM.AXI_LENW.W)
+    val size  = UInt(AXI_PARAM.AXI_SIZEW.W)
+}
+
+class ReadQueueBundle(SplitNum : Int) extends Bundle{
+    val data  = Vec(SplitNum,UInt(AXI_PARAM.AXI_DATAW.W))
+    val last  = Vec(SplitNum,Bool())
+    val len   = Vec(SplitNum,UInt(AXI_PARAM.AXI_LENW.W))
+    val size  = Vec(SplitNum,UInt(AXI_PARAM.AXI_SIZEW.W))
+    val id    = Vec(SplitNum,UInt(AXI_PARAM.AXI_IDW.W))
+}
+class ROBDataBundle extends Bundle{
+    val data      = UInt(AXI2UI_PARAM.UI_PARAMETER.UI_DATAW.W)
+    val id        = UInt(AXI_PARAM.AXI_IDW.W)
+    val len       = UInt(AXI_PARAM.AXI_LENW.W)
+    val size      = UInt(AXI_PARAM.AXI_SIZEW.W)
 }

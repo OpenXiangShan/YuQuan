@@ -17,7 +17,7 @@ package OpenMc
 import chisel3._
 import chisel3.util._
 
-case class RbParam(bufferSize: Int = 4, cTokenLen: Int = 16, fTokenLen: Int = 10)
+case class RbParam(bufferSize: Int = 4, cTokenLen: Int = 13, fTokenLen: Int = 7)
 
 class DataIO(tokenLen: Int) extends Bundle with OSMCParameter {
   val token = UInt(tokenLen.W)

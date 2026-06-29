@@ -28,7 +28,7 @@ import os.read
 class DFIAdapter extends Module{
     val io = IO(new Bundle {
         
-        val dfi_ctrl_in                 =  Flipped( new dfiCtl) 
+        val dfi_ctrl_in                 =  Flipped( new dfiCtl) //from group 
         val dfi_ctrl_out                = new dfiCtl //控制命令输出
         val dfi_wrdata                  = Flipped(new WrDataIO)
         val dfi_write_ph                = Flipped(Vec(2, Bool()))
@@ -50,6 +50,11 @@ class DFIAdapter extends Module{
         val wr_odt_hold                 =     Flipped(UInt(PARAMETERWIDTH.W))
         val rd_odt_delay                =     Flipped(UInt(PARAMETERWIDTH.W))
         val rd_odt_hold                 =     Flipped(UInt(PARAMETERWIDTH.W))
+
+        // val dfiupdate   = new dfiUpdate
+        // val dfistatus   = new dfiStatus
+        // val dfitraining = new dfiTraining
+        // val dfilp       = new dfiLP/*  */
     })
 
 
@@ -77,7 +82,7 @@ dontTouch(io.rd_odt_hold     )
     val  write_vld          = io.dfi_write_ph.reduce(_||_)
     val  read_vld           = io.dfi_read_ph.reduce(_||_)
     
-    val wrdata_delay = Module (new WrData_offset)
+    val wrdata_delay = Module (new WrData_offset(BUNDLE_PARAM.DATABITS))
     wrdata_delay.io.dfi_parameter_mode <> io.dfi_parameter_mode
     wrdata_delay.io.vld := RegNext(write_vld)
     wrdata_delay.io.write_latency := WL
@@ -86,7 +91,14 @@ dontTouch(io.rd_odt_hold     )
     wrdata_delay.io.write_data   := io.dfi_wrdata.wdata
     io.dfi_wrdata_ch_out.dfi_wdata <> wrdata_delay.io.offset_data 
     //wrdata_mask 
-    io.dfi_wrdata_ch_out.dfi_wdata_mask := Fill(BUNDLE_PARAM.DATA_WIDTH>>3,1.U(1.W))
+    val  wrdata_mask_delay = Module (new WrData_offset(BUNDLE_PARAM.STRBBITS))
+    wrdata_mask_delay.io.dfi_parameter_mode <> io.dfi_parameter_mode
+    wrdata_mask_delay.io.vld := RegNext(write_vld)
+    wrdata_mask_delay.io.write_latency := WL
+    wrdata_mask_delay.io.write_phase0 := RegNext(io.dfi_write_ph(0))
+    wrdata_mask_delay.io.write_phase1 := RegNext(io.dfi_write_ph(1))
+    wrdata_mask_delay.io.write_data   := io.dfi_wrdata.wstrb
+    io.dfi_wrdata_ch_out.dfi_wdata_mask := wrdata_mask_delay.io.offset_data
 
     
 
@@ -144,6 +156,8 @@ dontTouch(io.rd_odt_hold     )
     val RdData_buf      = dontTouch(RegInit(VecInit.fill(2)(0.U(DATABITS.W))))
 
     RdValidCntr        := Mux((io.dfi_rddata_in.dfi_rddata_valid).orR, RdValidCntr + 1.U, RdValidCntr)
+
+
     when((RdValidCntr.asBool)&&((io.dfi_rddata_in.dfi_rddata_valid).orR)) {
         RdData_buf(1)  := io.dfi_rddata_in.dfi_rddata
         RdValid        := 1.U
@@ -154,8 +168,11 @@ dontTouch(io.rd_odt_hold     )
         RdData_buf     := RdData_buf
         RdValid        := 0.U
     }
+
     io.dfi_rddata_ready := RdValid
     io.dfi_rddata_out   := RdData_buf.asUInt
+
+
     val cke             = RegInit(0.U((CKEBITS<<1).W))
     cke                 := VecInit.fill((CKEBITS<<1))(1.U).asTypeOf(cke)
     val reset_n           = RegInit(0.U((ResetNWidth<<1).W))

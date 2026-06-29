@@ -24,26 +24,26 @@ import java.util.ResourceBundle
 
 /**********BUNDLE_PARAMETER**********/
 case class BUNDLE_PARAMETER(
-    //AXI parameter
-    ID_WIDTH    :   Int = 4  ,   // ID width
-    TOKEN_WIDTH :   Int = 7  ,    // AXI read token width
+    TOKEN_WIDTH :   Int = 7,   //{overflow bit,counter bits} AXI token width
     ADDR_WIDTH  :   Int = 36 ,  // address 
-    DATA_WIDTH  :   Int = 512,  // data wi    
-    STRB_WIDTH  :   Int = 64 ,   // wstrb wi  
-    PRI_WIDTH   :   Int = 1  ,
-    //SplitCmdIO parameter
-    RANK_WIDTH  :   Int = 1  ,
-    BG_WIDTH    :   Int = 2  ,
-    BANK_WIDTH  :   Int = 2  ,
-    ROW_WIDTH   :   Int = 16 ,
-    COL_WIDTH   :   Int = 10 ,
-    //dfi parameter
-    ABITS       :   Int = 18 , //dfi ROW_WIDTH
-    BABITS      :   Int = 2  , //dfi BANK_WIDTH
-    BGBITS      :   Int = 2  , //dfi BG_WIDTH
-    COLBITS     :   Int = 10 , //dfi COL_WIDTH
-    RKBITS      :   Int = 1  , //dfi RANK_WIDTH
-    DATABITS    :   Int = 256, //dfi DATA_WIDTH
+    DATA_WIDTH  :   Int = 512,  // *data wi    
+    STRB_WIDTH  :   Int = 64,   // wstrb wi  
+    PRI_WIDTH   :   Int = 1,
+
+//SplitCmdIO parameter
+    RANK_WIDTH  :   Int = 1 ,
+    BG_WIDTH    :   Int = 2 ,
+    BANK_WIDTH  :   Int = 2 ,
+    ROW_WIDTH   :   Int = 16,//取决于颗粒ROW地址位数
+    COL_WIDTH   :   Int = 10,
+
+    ABITS       :   Int = 18 , // dfi ROW_WIDTH
+    BABITS      :   Int = 2  , //BANK_WIDTH
+    BGBITS      :   Int = 2  , //BG_WIDTH
+    COLBITS     :   Int = 10 , //COL_WIDTH
+    RKBITS      :   Int = 1  , //RANK_WIDTH
+    DATABITS    :   Int = 256, //DATA_WIDTH
+    STRBBITS     :   Int = 32 , //STRB_WIDTH
     CKEBITS     :   Int = 1  ,
     ODTBITS     :   Int = 1  ,
     TOKENBITS   :   Int = 14 , //scg token width
@@ -54,30 +54,43 @@ case class BUNDLE_PARAMETER(
     WrDataEnWidth : Int = 16 , 
     WrDataCsNWidth: Int = 32 ,
     CMDBITS       : Int = 3  ,
-    ResetNWidth   : Int = 1  ,
-    CsNWidth      : Int = 1  , 
-    ActNWidth     : Int = 1  ,
-    RasNWidth     : Int = 1  ,
-    CasNWidth     : Int = 1  ,
-    WeNWidth      : Int = 1  ,
-    CidBITS       : Int = 1  ,
-    PARAMETERWIDTH: Int = 5  ,
-    McParamWidth  : Int = 32 ,
-    tZQINTVL_Witdh: Int = 32 ,
-    RLmax         : Int = 30 ,
-    Wlmax         : Int = 30  
-
-
     
+
+    ResetNWidth   : Int = 1    ,
+    CsNWidth      : Int = 1    , 
+    ActNWidth     : Int = 1    ,
+    RasNWidth     : Int = 1    ,
+    CasNWidth     : Int = 1    ,
+    WeNWidth      : Int = 1    ,
+    CidBITS       : Int = 1    ,
+    PARAMETERWIDTH: Int = 5    ,
+
+    McParamWidth  : Int = 32   ,
+    TXN_FIFO_DEPTH: Int = 16   ,
+    CMD_FIFO_DEPTH: Int = 16   ,
+
+    tZQINTVL_Witdh: Int = 32   ,
+
+    WrSchedulerQueueDepth : Int = 32 ,
+    RdSchedulerQueueDepth : Int = 16 ,
+
+  //dfi rddata parameter 
+    RLmax         : Int =  10  ,
+    trddata_en    : Int =  2   ,
+    tphy_rdcslat  : Int =  2   ,
+    tphy_rdlat    : Int =  4   ,
+    Wlmax         : Int =  20  ,
+
+    BANK_NUM       : Int  = 4  ,
+    MC_CLK         : Int  = 600 //MHZ
 
 
 )
 object BUNDLE_PARAM extends BUNDLE_PARAMETER
 
 
-case class CONFIG_PARAMETER(
-    MC_CLK                : Int = 600,//MC actual operating frequency
-    WrSchedulerQueueDepth : Int = 32 ,//WrSchedulerQueueDepth
-    RdSchedulerQueueDepth : Int = 16  //RdSchedulerQueueDepth
+case class ROB_PARAMETER(
+  RobEntryNum  : Int = 128 ,
+  VirtualChannelNum : Int = 1  
 )
-object CONFIGURABLE_PARAM extends CONFIG_PARAMETER
+object  ROB_PARAM extends ROB_PARAMETER

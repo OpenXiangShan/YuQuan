@@ -13,15 +13,17 @@
 *   
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
-package apb
+package APB
 
 import chisel3._ 
 import chisel3.util._
 import utils._
+import bus.apb3._
+import bus.apb3.APBParameters.{regBits => regBits}
 
-class APBSlvtop extends RawModule with APBParam with HasRegConst {
+class APBSlvtop extends RawModule with HasRegConst {
     val io = IO(new Bundle {
-        val apbio = new APBIO
+        val apb = new APB3
         val cclk = Input(Clock())
         val crst = Input(AsyncReset())
         val regio = new RegIO
@@ -30,9 +32,10 @@ class APBSlvtop extends RawModule with APBParam with HasRegConst {
         val apbDone = Output(Bool())
     })
 
-    val prst = (!io.apbio.presetn.asBool).asAsyncReset
+    
+    val prst = (!io.apb.presetn.asBool).asAsyncReset
     // apb clock domain
-    withClockAndReset(io.apbio.pclk, prst) {
+    withClockAndReset(io.apb.pclk, prst) {
         // forward reference to value used in FSM
         val wen = Wire(Bool())
         val ack = Wire(Bool())
@@ -55,7 +58,7 @@ class APBSlvtop extends RawModule with APBParam with HasRegConst {
             is (s_delay) { when (dly) { state := s_idle } }
             is (s_idle) {
                 cnt.reset()
-                when (io.apbio.psel & io.apbio.penable) { state := s_access }
+                when (io.apb.psel & io.apb.penable) { state := s_access }
             }
             is (s_access) {
                 when (isRONeedSync || isDynamicReg && wen) { state := s_waitack }
@@ -67,80 +70,79 @@ class APBSlvtop extends RawModule with APBParam with HasRegConst {
 
         // reg interface(slvif)
         // axi2ui
-        val a2uaxirdcnt = Wire(UInt(XLEN.W))
-        val a2uaxiwrcnt = Wire(UInt(XLEN.W))
-        val a2uuirdcnt = Wire(UInt(XLEN.W))
-        val a2uuiwrcnt = Wire(UInt(XLEN.W))
-        val a2uuirbcnt = Wire(UInt(XLEN.W))
-        val a2udebug = Wire(UInt(XLEN.W))
-        val a2utoken = Wire(UInt(XLEN.W))
+        val a2uaxirdcnt = Wire(UInt(regBits.W))
+        val a2uaxiwrcnt = Wire(UInt(regBits.W))
+        val a2uuirdcnt = Wire(UInt(regBits.W))
+        val a2uuiwrcnt = Wire(UInt(regBits.W))
+        val a2uuirbcnt = Wire(UInt(regBits.W))
+        val a2udebug = Wire(UInt(regBits.W))
+        val a2utoken = Wire(UInt(regBits.W))
 
-        val a2uaxirdcntcd = Wire(UInt(XLEN.W))
-        val a2uaxiwrcntcd = Wire(UInt(XLEN.W))
-        val a2uuirdcntcd = Wire(UInt(XLEN.W))
-        val a2uuiwrcntcd = Wire(UInt(XLEN.W))
-        val a2uuirbcntcd = Wire(UInt(XLEN.W))
-        val a2udebugcd = Wire(UInt(XLEN.W))
-        val a2utokencd = Wire(UInt(XLEN.W))
-
+        val a2uaxirdcntcd = Wire(UInt(regBits.W))
+        val a2uaxiwrcntcd = Wire(UInt(regBits.W))
+        val a2uuirdcntcd = Wire(UInt(regBits.W))
+        val a2uuiwrcntcd = Wire(UInt(regBits.W))
+        val a2uuirbcntcd = Wire(UInt(regBits.W))
+        val a2udebugcd = Wire(UInt(regBits.W))
+        val a2utokencd = Wire(UInt(regBits.W))
         // filter
-        val ftctrl = RegInit(UInt(XLEN.W), "h4".U)
-        val ftadrbdh1 = RegInit(UInt(XLEN.W), "h0".U)
-        val ftadrbdh0 = RegInit(UInt(XLEN.W), "hffff_ffff".U)
-        val ftadrbdl1 = RegInit(UInt(XLEN.W), "h0".U)
-        val ftadrbdl0 = RegInit(UInt(XLEN.W), "h0001_0000".U)
-        val ftdebug = Wire(UInt(XLEN.W))
-        val ftrdcnt = Wire(UInt(XLEN.W))
-        val ftwrcnt = Wire(UInt(XLEN.W))
-        val ftrbcnt = Wire(UInt(XLEN.W))
+        val ftctrl = RegInit(UInt(regBits.W), "h4".U)
+        val ftadrbdh1 = RegInit(UInt(regBits.W), "h0".U)
+        val ftadrbdh0 = RegInit(UInt(regBits.W), "hffff_ffff".U)
+        val ftadrbdl1 = RegInit(UInt(regBits.W), "h0".U)
+        val ftadrbdl0 = RegInit(UInt(regBits.W), "h0001_0000".U)
+        val ftdebug = Wire(UInt(regBits.W))
+        val ftrdcnt = Wire(UInt(regBits.W))
+        val ftwrcnt = Wire(UInt(regBits.W))
+        val ftrbcnt = Wire(UInt(regBits.W))
 
-        val ftdebugcd = Wire(UInt(XLEN.W))
-        val ftrdcntcd = Wire(UInt(XLEN.W))
-        val ftwrcntcd = Wire(UInt(XLEN.W))
-        val ftrbcntcd = Wire(UInt(XLEN.W))
+        val ftdebugcd = Wire(UInt(regBits.W))
+        val ftrdcntcd = Wire(UInt(regBits.W))
+        val ftwrcntcd = Wire(UInt(regBits.W))
+        val ftrbcntcd = Wire(UInt(regBits.W))
 
         // addrmap
         val addrmap = RegInit(UInt(32.W), "h0".U)
 
         //scheduler
-        val schedulerwr = RegInit(UInt(XLEN.W), "h0000_0702".U)
-        val schedulerrd = RegInit(UInt(XLEN.W), "h0000_8040".U)
+        val schedulerwr = RegInit(UInt(regBits.W), "h0000_0702".U)
+        val schedulerrd = RegInit(UInt(regBits.W), "h0000_8040".U)
   
         // scg
-        val scgtmchk0 = RegInit(UInt(XLEN.W), "h1061a410".U)//tRRD_S/tRRD_L/tFAW/tRCD/tRP
-        val scgtmchk1 = RegInit(UInt(XLEN.W), "h0408040a".U)//tCCD_S/tCCD_L/tWTR_S/tWTR_L
-        val scgtmchk2 = RegInit(UInt(XLEN.W), "h0c140a2a".U)//tRTW/tWR/tRTP/tRAS
-        val scgtmchk3 = RegInit(UInt(XLEN.W), "h00000c08".U)//al/rl/wl/bl 
-        val scgref0 = RegInit(UInt(XLEN.W), "h80".U)//tzqintvl 128
-        val scgref1 = RegInit(UInt(XLEN.W), "h1b58".U)//tREFI
-        val scgref2 = RegInit(UInt(XLEN.W), "h19080".U)//tRFC/tZQCS
-        val scgdfi0 = RegInit(UInt(XLEN.W), "h900000c".U)   
-        val scgdfi1 = RegInit(UInt(XLEN.W), "h202".U)
-        val scgdfi2 = RegInit(UInt(XLEN.W), "h15041504".U)
-        val scgdfi3 = RegInit(UInt(XLEN.W), "h1".U)  //dfi mode
-        val scgclspg = RegInit(UInt(XLEN.W), "h190".U)
-        val scgdebug = Wire(UInt(XLEN.W))
-        val scgmcctrl = RegInit(UInt(XLEN.W), "h0".U)
-        val scgddrstat = Wire(UInt(XLEN.W))
-        val scginitmparam0 = RegInit(UInt(XLEN.W), "h1d4f0145".U)
-        val scginitmparam1 = RegInit(UInt(XLEN.W), "h928b018".U)
-        val scginitmparam2 = RegInit(UInt(XLEN.W), "h8400".U)
-        val scgmrsmode0 = RegInit(UInt(XLEN.W), "h10a30".U)
-        val scgmrsmode1 = RegInit(UInt(XLEN.W), "h180000".U)
-        val scgmrsmode2 = RegInit(UInt(XLEN.W), "h40".U)
-        val scgmrsmode3 = RegInit(UInt(XLEN.W), "h800".U)
-        val scggeardownmode = RegInit(UInt(XLEN.W), "h40404040".U)
-        val scgraparam = RegInit(UInt(XLEN.W), "h0a0a0e04".U)
+        val scgtmchk0 = RegInit(UInt(regBits.W), "h1061a410".U)//tRRD_S/tRRD_L/tFAW/tRCD/tRP
+        val scgtmchk1 = RegInit(UInt(regBits.W), "h0408040a".U)//tCCD_S/tCCD_L/tWTR_S/tWTR_L
+        val scgtmchk2 = RegInit(UInt(regBits.W), "h0c140a2a".U)//tRTW/tWR/tRTP/tRAS
+        val scgtmchk3 = RegInit(UInt(regBits.W), "h00000c08".U)//al/rl/wl/bl 
+        val scgref0 = RegInit(UInt(regBits.W), "h80".U)//tzqintvl 128
+        val scgref1 = RegInit(UInt(regBits.W), "h1b58".U)//tREFI
+        val scgref2 = RegInit(UInt(regBits.W), "h19080".U)//tRFC/tZQCS
+        val scgdfi0 = RegInit(UInt(regBits.W), "h900000c".U)   
+        val scgdfi1 = RegInit(UInt(regBits.W), "h202".U)
+        val scgdfi2 = RegInit(UInt(regBits.W), "h15041504".U)
+        val scgdfi3 = RegInit(UInt(regBits.W), "h1".U)  //dfi mode
+        val scgclspg = RegInit(UInt(regBits.W), "h190".U)
+        val scgdebug = Wire(UInt(regBits.W))
+        val scgmcctrl = RegInit(UInt(regBits.W), "h0".U)
+        val scgddrstat = Wire(UInt(regBits.W))
+        val scginitmparam0 = RegInit(UInt(regBits.W), "h1d4f0145".U)
+        val scginitmparam1 = RegInit(UInt(regBits.W), "h928b018".U)
+        val scginitmparam2 = RegInit(UInt(regBits.W), "h8400".U)
+        val scgmrsmode0 = RegInit(UInt(regBits.W), "h10a30".U)
+        val scgmrsmode1 = RegInit(UInt(regBits.W), "h180000".U)
+        val scgmrsmode2 = RegInit(UInt(regBits.W), "h40".U)
+        val scgmrsmode3 = RegInit(UInt(regBits.W), "h800".U)
+        val scggeardownmode = RegInit(UInt(regBits.W), "h40404040".U)
+        val scgraparam = RegInit(UInt(regBits.W), "h0a0a0e04".U)
 
-        val scgdebugcd = Wire(UInt(XLEN.W))
-        val scgmcctrlcd = Wire(UInt(XLEN.W))
-        val scgddrstatcd = Wire(UInt(XLEN.W))
+        val scgdebugcd = Wire(UInt(regBits.W))
+        val scgmcctrlcd = Wire(UInt(regBits.W))
+        val scgddrstatcd = Wire(UInt(regBits.W))
 
-        val scgctrl = RegInit(UInt(XLEN.W), "h0".U)
+        val scgctrl = RegInit(UInt(regBits.W), "h0".U)
 
         // apbcfg done
-        val apbcfg = RegInit(UInt(XLEN.W), "h0".U)
-        val apbcfgcd = Wire(UInt(XLEN.W))
+        val apbcfg = RegInit(UInt(regBits.W), "h0".U)
+        val apbcfgcd = Wire(UInt(regBits.W))
 
         // apb reg map
         val mappingReg = Map(
@@ -204,10 +206,10 @@ class APBSlvtop extends RawModule with APBParam with HasRegConst {
         )
 
         // addrdecode
-        val addr = io.apbio.paddr >> 2
-        val rdata = Wire(UInt(XLEN.W))
-        val wdata = io.apbio.pwdata
-        wen := state === s_access && io.apbio.pwrite
+        val addr = io.apb.paddr >> 2
+        val rdata = Wire(UInt(regBits.W))
+        val wdata = io.apb.pwdata
+        wen := state === s_access && io.apb.pwrite
 
         // reg wr & rd
         MaskedRegMap.generate(mappingReg, addr, rdata, wen, wdata, io.sen, io.qen)
@@ -217,43 +219,43 @@ class APBSlvtop extends RawModule with APBParam with HasRegConst {
         // CDC map
         val mappingCDC = Map(
             // axi2ui
-            MultiClockPath(axi2uiConst.absOff(axi2uiConst.axirdcnt), io.cclk, io.crst, io.apbio.pclk, prst, a2uaxirdcntcd, a2uaxirdcnt),
-            MultiClockPath(axi2uiConst.absOff(axi2uiConst.axiwrcnt), io.cclk, io.crst, io.apbio.pclk, prst, a2uaxiwrcntcd, a2uaxiwrcnt),
-            MultiClockPath(axi2uiConst.absOff(axi2uiConst.uirdcnt ), io.cclk, io.crst, io.apbio.pclk, prst, a2uuirdcntcd, a2uuirdcnt),
-            MultiClockPath(axi2uiConst.absOff(axi2uiConst.uiwrcnt ), io.cclk, io.crst, io.apbio.pclk, prst, a2uuiwrcntcd, a2uuiwrcnt),
-            MultiClockPath(axi2uiConst.absOff(axi2uiConst.uirbcnt ), io.cclk, io.crst, io.apbio.pclk, prst, a2uuirbcntcd, a2uuirbcnt),
-            MultiClockPath(axi2uiConst.absOff(axi2uiConst.debug   ), io.cclk, io.crst, io.apbio.pclk, prst, a2udebugcd, a2udebug),
-            MultiClockPath(axi2uiConst.absOff(axi2uiConst.token   ), io.cclk, io.crst, io.apbio.pclk, prst, a2utokencd, a2utoken),
+            MultiClockPath(axi2uiConst.absOff(axi2uiConst.axirdcnt), io.cclk, io.crst, io.apb.pclk, prst, a2uaxirdcntcd, a2uaxirdcnt),
+            MultiClockPath(axi2uiConst.absOff(axi2uiConst.axiwrcnt), io.cclk, io.crst, io.apb.pclk, prst, a2uaxiwrcntcd, a2uaxiwrcnt),
+            MultiClockPath(axi2uiConst.absOff(axi2uiConst.uirdcnt ), io.cclk, io.crst, io.apb.pclk, prst, a2uuirdcntcd, a2uuirdcnt),
+            MultiClockPath(axi2uiConst.absOff(axi2uiConst.uiwrcnt ), io.cclk, io.crst, io.apb.pclk, prst, a2uuiwrcntcd, a2uuiwrcnt),
+            MultiClockPath(axi2uiConst.absOff(axi2uiConst.uirbcnt ), io.cclk, io.crst, io.apb.pclk, prst, a2uuirbcntcd, a2uuirbcnt),
+            MultiClockPath(axi2uiConst.absOff(axi2uiConst.debug   ), io.cclk, io.crst, io.apb.pclk, prst, a2udebugcd, a2udebug),
+            MultiClockPath(axi2uiConst.absOff(axi2uiConst.token   ), io.cclk, io.crst, io.apb.pclk, prst, a2utokencd, a2utoken),
 
             // addrmap
-            MultiClockPath(addrmapRegConst.absOff(addrmapRegConst.addrmap), io.apbio.pclk, prst, io.cclk, io.crst, addrmap.asTypeOf(new ADDRMAPStruct).mapMode, io.regio.amapRegio.MEM_ADDR_MAP),
+            MultiClockPath(addrmapRegConst.absOff(addrmapRegConst.addrmap), io.apb.pclk, prst, io.cclk, io.crst, addrmap.asTypeOf(new ADDRMAPStruct).mapMode, io.regio.amapRegio.MEM_ADDR_MAP),
 
             // filter
-            MultiClockPath(filterConst.absOff(filterConst.debug), io.cclk, io.crst, io.apbio.pclk, prst, ftdebugcd, ftdebug),
-            MultiClockPath(filterConst.absOff(filterConst.rdcnt), io.cclk, io.crst, io.apbio.pclk, prst, ftrdcntcd, ftrdcnt),
-            MultiClockPath(filterConst.absOff(filterConst.wrcnt), io.cclk, io.crst, io.apbio.pclk, prst, ftwrcntcd, ftwrcnt),
-            MultiClockPath(filterConst.absOff(filterConst.wbcnt), io.cclk, io.crst, io.apbio.pclk, prst, ftrbcntcd, ftrbcnt),
+            MultiClockPath(filterConst.absOff(filterConst.debug), io.cclk, io.crst, io.apb.pclk, prst, ftdebugcd, ftdebug),
+            MultiClockPath(filterConst.absOff(filterConst.rdcnt), io.cclk, io.crst, io.apb.pclk, prst, ftrdcntcd, ftrdcnt),
+            MultiClockPath(filterConst.absOff(filterConst.wrcnt), io.cclk, io.crst, io.apb.pclk, prst, ftwrcntcd, ftwrcnt),
+            MultiClockPath(filterConst.absOff(filterConst.wbcnt), io.cclk, io.crst, io.apb.pclk, prst, ftrbcntcd, ftrbcnt),
             
             // scg
-            MultiClockPath(scgConst.absOff(scgConst.debug), io.cclk, io.crst, io.apbio.pclk, prst, scgdebugcd, scgdebug),
-            MultiClockPath(scgConst.absOff(scgConst.mcctrl), io.apbio.pclk, prst, io.cclk, io.crst, scgmcctrl, scgmcctrlcd, ro = false),
-            MultiClockPath(scgConst.absOff(scgConst.ddrstat), io.cclk, io.crst, io.apbio.pclk, prst, scgddrstatcd, scgddrstat),
-            MultiClockPath(scgConst.absOff(scgConst.mode), io.apbio.pclk, prst, io.cclk, io.crst, scgctrl.asTypeOf(new SCGctrlStruct).scgMode, io.regio.scgio.scgMode),
+            MultiClockPath(scgConst.absOff(scgConst.debug), io.cclk, io.crst, io.apb.pclk, prst, scgdebugcd, scgdebug),
+            MultiClockPath(scgConst.absOff(scgConst.mcctrl), io.apb.pclk, prst, io.cclk, io.crst, scgmcctrl, scgmcctrlcd, ro = false),
+            MultiClockPath(scgConst.absOff(scgConst.ddrstat), io.cclk, io.crst, io.apb.pclk, prst, scgddrstatcd, scgddrstat),
+            MultiClockPath(scgConst.absOff(scgConst.mode), io.apb.pclk, prst, io.cclk, io.crst, scgctrl.asTypeOf(new SCGctrlStruct).scgMode, io.regio.scgio.scgMode),
 
 
             //scheduler
-            MultiClockPath(asConst.absOff(asConst.aswr), io.apbio.pclk, prst, io.cclk, io.crst, schedulerwr.asTypeOf(new ASwrStruct).wrhigh, io.regio.asRegio.wrhigh),
-            MultiClockPath(asConst.absOff(asConst.aswr), io.apbio.pclk, prst, io.cclk, io.crst, schedulerwr.asTypeOf(new ASwrStruct).wrlow, io.regio.asRegio.wrlow),
-            MultiClockPath(asConst.absOff(asConst.asrd), io.apbio.pclk, prst, io.cclk, io.crst, schedulerrd.asTypeOf(new ASrdStruct).rdhigh, io.regio.asRegio.rdhigh),
-            MultiClockPath(asConst.absOff(asConst.asrd), io.apbio.pclk, prst, io.cclk, io.crst, schedulerrd.asTypeOf(new ASrdStruct).rdlow, io.regio.asRegio.rdlow),
+            MultiClockPath(asConst.absOff(asConst.aswr), io.apb.pclk, prst, io.cclk, io.crst, schedulerwr.asTypeOf(new ASwrStruct).wrhigh, io.regio.asRegio.wrhigh),
+            MultiClockPath(asConst.absOff(asConst.aswr), io.apb.pclk, prst, io.cclk, io.crst, schedulerwr.asTypeOf(new ASwrStruct).wrlow, io.regio.asRegio.wrlow),
+            MultiClockPath(asConst.absOff(asConst.asrd), io.apb.pclk, prst, io.cclk, io.crst, schedulerrd.asTypeOf(new ASrdStruct).rdhigh, io.regio.asRegio.rdhigh),
+            MultiClockPath(asConst.absOff(asConst.asrd), io.apb.pclk, prst, io.cclk, io.crst, schedulerrd.asTypeOf(new ASrdStruct).rdlow, io.regio.asRegio.rdlow),
 
 
             // apbcfg
-            MultiClockPath(apbcfgConst.offset, io.apbio.pclk, prst, io.cclk, io.crst, apbcfg, apbcfgcd, ro = false)
+            MultiClockPath(apbcfgConst.offset, io.apb.pclk, prst, io.cclk, io.crst, apbcfg, apbcfgcd, ro = false)
         )
 
         // CDC
-        isRONeedSync := MultiClockPath.isRONeedSync(mappingCDC, addr) && state === s_access && !io.apbio.pwrite
+        isRONeedSync := MultiClockPath.isRONeedSync(mappingCDC, addr) && state === s_access && !io.apb.pwrite
         val levelSend = Wire(Bool())
         levelSend := RegNext(isRONeedSync ^ levelSend, false.B)
         val send = Mux(isDynamicReg, RegNext(wen, false.B),
@@ -262,9 +264,9 @@ class APBSlvtop extends RawModule with APBParam with HasRegConst {
 
         // io
         // apb
-        io.apbio.pready := state === s_ready
-        io.apbio.prdata := rdata
-        io.apbio.pslverr := isIllegalAddr && state === s_ready
+        io.apb.pready := state === s_ready
+        io.apb.prdata := rdata
+        io.apb.pslverr := isIllegalAddr && state === s_ready
 
         // axi2ui
         a2uaxirdcntcd := io.regio.a2uio.axiRdCmdCnt

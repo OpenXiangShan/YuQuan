@@ -18,7 +18,8 @@ import chisel3._
 import chisel3.experimental.FlatIO
 import chisel3.util._
 import BUNDLE_PARAM._
-
+import chisel3.SpecifiedDirection.Flip
+import java.awt.BufferCapabilities.FlipContents
 
 class PhaseAdapter extends Bundle {
     val dfiAdr  = Vec(2,UInt(BUNDLE_PARAM.ABITS.W))
@@ -36,21 +37,24 @@ class PhaseAdapter extends Bundle {
 
 class  DFIPhaseCtrl (WriteTokenWidth : Int = BUNDLE_PARAM.TOKEN_WIDTH)extends Module {
     val  io = IO(new Bundle{
-        val winCmd       = Flipped(new TimingDFIPhase)
-        val Mrs_Req      = Flipped(Bool())
-        val Mrs_BG       = Flipped(UInt(BUNDLE_PARAM.BGBITS.W))
-        val Mrs_BA       = Flipped(UInt(BUNDLE_PARAM.BABITS.W))
-        val Mrs_ADDR     = Flipped(UInt(BUNDLE_PARAM.ABITS.W))
-        val Mrs_rank     = Flipped(UInt(BUNDLE_PARAM.RANK_WIDTH.W))
-        val Zqcl_req     = Flipped(Bool()) 
-        val cke          = Flipped(Bool())
+        val winCmd     = Flipped(new TimingDFIPhase)
+
+        val Mrs_Req    = Flipped(Bool())
+        val Mrs_BG     = Flipped(UInt(BUNDLE_PARAM.BGBITS.W))
+        val Mrs_BA     = Flipped(UInt(BUNDLE_PARAM.BABITS.W))
+        val Mrs_ADDR   = Flipped(UInt(BUNDLE_PARAM.ABITS.W))
+        val Mrs_rank   = Flipped(UInt(BUNDLE_PARAM.RANK_WIDTH.W))
+        val Zqcl_req   = Flipped(Bool()) 
+        val cke        = Flipped(Bool())
         val init_process = Flipped(Bool())
         val dram_rst_n   = Flipped(Bool())
+
         val dfi_write_ph = Vec(2, Bool())
         val dfi_read_ph  = Vec(2, Bool())
         val write_token  = UInt(WriteTokenWidth.W) 
         val read_token   = UInt(BUNDLE_PARAM.TOKENBITS.W)
-        val adpter       = new dfiCtl()
+
+        val adpter    = new dfiCtl()
     })
     dontTouch(io)
     //CMD
@@ -91,16 +95,28 @@ class  DFIPhaseCtrl (WriteTokenWidth : Int = BUNDLE_PARAM.TOKEN_WIDTH)extends Mo
         io.adpter.dfi_cas_n(1)           := NOP(1)
         io.adpter.dfi_we_n(0)            := Mux(Clear,NOP(0),Mux(IsAct,addr(14),cmd(0)))
         io.adpter.dfi_we_n(1)            := NOP(0)
-        io.adpter.dfi_bank(0)            := Mux(Clear,0.U,ba)
-        io.adpter.dfi_bank(1)            := 0.U
-        io.adpter.dfi_bg(0)              := Mux(Clear,0.U,bg)
-        io.adpter.dfi_bg(1)              := 0.U
-        io.adpter.dfi_address(0)         := Mux(Clear,0.U,addr)
-        io.adpter.dfi_address(1)         := 0.U
+        io.adpter.dfi_bank(0)             := Mux(Clear,0.U,ba)
+        io.adpter.dfi_bank(1)             := 0.U
+        io.adpter.dfi_bg(0)             := Mux(Clear,0.U,bg)
+        io.adpter.dfi_bg(1)             := 0.U
+        io.adpter.dfi_address(0)            := Mux(Clear,0.U,addr)
+        io.adpter.dfi_address(1)            := 0.U
     }
 
     val hasRefReqs = io.winCmd.refIss | io.winCmd.preIss | io.winCmd.zqIss
     val hasnormalReqs = io.winCmd.actReq | io.winCmd.casReq | io.winCmd.preReq
+    val actCount  = RegInit(0.U(32.W))//统计MC行为,忽略背景操作
+    val WrCount   = RegInit(0.U(32.W))
+    val RdCount   = RegInit(0.U(32.W))
+    val PreCount  = RegInit(0.U(32.W))
+    dontTouch(actCount)
+    dontTouch(WrCount)
+    dontTouch(RdCount)
+    dontTouch(PreCount)
+    actCount := actCount + io.winCmd.actReq
+    WrCount  := WrCount  + (!io.winCmd.casRead & io.winCmd.casReq)
+    RdCount  := RdCount  + (io.winCmd.casRead  & io.winCmd.casReq)
+    PreCount := PreCount + io.winCmd.preReq
     assert(!(io.init_process & hasRefReqs))
     assert(!(io.init_process & hasnormalReqs))
     assert(!(hasRefReqs & hasnormalReqs))

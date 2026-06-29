@@ -18,7 +18,8 @@ package OpenMc
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
-
+import java.util.ResourceBundle
+//import scala.annotation.newMain
 
 /**********AXI_PARAMETER**********/
 case class AXI_PARAMETER(
@@ -63,7 +64,19 @@ case class TOKEN_PARAMETER(
 object TOKEN_PARAM extends TOKEN_PARAMETER
 
 /********************************************************************************************************************************************************************/
-
+object AXI2UIQueueDepth {
+    val writeAwL1     = 16
+    val writeAwL2     = 8
+    val writeWL1      = 16
+    val writeWL2      = 16
+    val writeB        = 16
+    val writeBOrder   = 16
+    val readArL1      = 4
+    val readArL2      = 8
+    val readR         = 8
+    val readCmd       = 256
+    val readRobAddrQ  = 128
+}
 class AXI2UI_PARAMETER{
     val AXI_PARAMETER       = new AXI_PARAMETER()
     val UI_PARAMETER        = new UI_PARAMETER()

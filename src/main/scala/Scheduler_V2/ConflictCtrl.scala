@@ -26,7 +26,6 @@ class ConflictCtrl[T <: SchedulerSCGCmd](gen: T) extends Module {
     val conflict  = Vec(2, Flipped(Bool())) // 0 -> read, 1 -> write
     val cmdOut    = Decoupled(gen) // to cmd station
   })
-
   io.cmdDetect.valid := io.cmdIn.valid
   io.cmdDetect.bits.unsafe :<>= io.cmdIn.bits.unsafe
 

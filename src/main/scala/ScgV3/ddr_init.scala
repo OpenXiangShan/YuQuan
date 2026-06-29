@@ -18,8 +18,9 @@ package  OpenMc
 import  chisel3._
 import chisel3.util._
 import chisel3.experimental._
-
-
+import javax.swing.InputMap
+import scala.annotation.varargs
+import os.read.inputStream
 
 class ddr4_init(BGBITS: Int,BABITS :Int , ABITS: Int) extends Module{
     val io = IO(new Bundle{
@@ -138,6 +139,7 @@ class ddr4_init(BGBITS: Int,BABITS :Int , ABITS: Int) extends Module{
         timer_mode                      :=              timer_mode - 1.U
     }
     //timer_dram_rstn
+    // timer_dram_rstn_w                   :=              Mux(io.apbDone, io.dram_rstn, 255.U)
     when(timer_dram_rstn.orR & io.apbDone){
         timer_dram_rstn                 :=              timer_dram_rstn - 1.U
     }.elsewhen(!timer_dram_rstn.orR){

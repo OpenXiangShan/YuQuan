@@ -47,6 +47,7 @@ class Refresh extends Module with RefreshMode{
         val timeParam    = Flipped(new RefTime)
         val refArb = new RefArbIO
         val SchedulerQueueIsEmpty = Flipped(Bool())
+        // val debug_ref_state = UInt(3.W)
     }) 
 
     //REF_FSM
@@ -68,19 +69,20 @@ class Refresh extends Module with RefreshMode{
 
     // 统一的timer更新函数
     def updateTimer(timer: UInt, resetVal: UInt): UInt = {
+        // Mux(io.CalDone & timer === 0.U, resetVal - 1.U, timer - 1.U )
         Mux(io.CalDone,Mux(timer === 0.U ,resetVal - 1.U,timer - 1.U ),resetVal)
     }
-    val tREFI_TIMER_default = WireInit((io.timeParam.tREFI * CONFIGURABLE_PARAM.MC_CLK.U )/1000.U)
+    val tREFI_TIMER_default = WireInit((io.timeParam.tREFI * BUNDLE_PARAM.MC_CLK.U )/1000.U)
     val tREFI_TIMER_mux     = MuxCase(tREFI_TIMER_default -1.U,Seq(
         (io.timeParam.RefreshMode === autoRefresh,tREFI_TIMER_default -1.U),
-        (io.timeParam.RefreshMode === postponedRefresh,(tREFI_TIMER_default*18.U) -1.U ),
-        (io.timeParam.RefreshMode === speculativeRefresh,((tREFI_TIMER_default<<1)-1.U))
+        (io.timeParam.RefreshMode === postponedRefresh,(tREFI_TIMER_default*8.U) -1.U ),
+        (io.timeParam.RefreshMode === speculativeRefresh,((tREFI_TIMER_default)-1.U))
     ))
 
     val tREFI_timer = RegInit(0.U(BUNDLE_PARAM.McParamWidth.W))
     tREFI_timer := updateTimer(tREFI_timer, tREFI_TIMER_mux)
 
-    val tZQINTVL_timer_default = (((io.timeParam.tZQINTVL*CONFIGURABLE_PARAM.MC_CLK.U)*1000.U) ) - 1.U
+    val tZQINTVL_timer_default = (((io.timeParam.tZQINTVL*BUNDLE_PARAM.MC_CLK.U)*1000.U) ) - 1.U
     val tZQINTVL_timer = RegInit(0.U(BUNDLE_PARAM.tZQINTVL_Witdh.W))
     tZQINTVL_timer := updateTimer(tZQINTVL_timer, tZQINTVL_timer_default)
 
@@ -93,9 +95,9 @@ class Refresh extends Module with RefreshMode{
 
     val tRFC_timer = RegInit(0.U(BUNDLE_PARAM.McParamWidth.W))
     when(state === REF_FSM.tRFC_WAIT) {
-        tRFC_timer := updateTimer(tRFC_timer, (((io.timeParam.tRFC*CONFIGURABLE_PARAM.MC_CLK.U)/1000.U)) - 1.U)
+        tRFC_timer := updateTimer(tRFC_timer, (((io.timeParam.tRFC*BUNDLE_PARAM.MC_CLK.U)/1000.U)) - 1.U)
     }.otherwise {
-        tRFC_timer := (((io.timeParam.tRFC*CONFIGURABLE_PARAM.MC_CLK.U)/1000.U)) - 1.U
+        tRFC_timer := (((io.timeParam.tRFC*BUNDLE_PARAM.MC_CLK.U)/1000.U)) - 1.U
     }
 
     val tZQCS_timer = RegInit(0.U(BUNDLE_PARAM.McParamWidth.W))
@@ -114,7 +116,7 @@ class Refresh extends Module with RefreshMode{
         refPend := Mux(refPend > 0.U ,refPend - 1.U,refPend)
     }.elsewhen(io.CalDone && tREFI_timer === 0.U) {
         refPend := refPend + 1.U 
-        busrt_refresh_count := Mux(io.timeParam.RefreshMode === autoRefresh ,0.U ,18.U)
+        busrt_refresh_count := Mux(io.timeParam.RefreshMode === autoRefresh ,0.U ,8.U)
     }
 
     // zq pend
@@ -128,7 +130,7 @@ class Refresh extends Module with RefreshMode{
     refCond := MuxCase(false.B,Seq(
         (io.timeParam.RefreshMode === autoRefresh,refPend.orR),
         (io.timeParam.RefreshMode === postponedRefresh,refPend.orR),
-        (io.timeParam.RefreshMode === speculativeRefresh,(refPend.orR & io.SchedulerQueueIsEmpty) | refPend === 9.U)
+        (io.timeParam.RefreshMode === speculativeRefresh,(refPend.orR & io.SchedulerQueueIsEmpty) | refPend === 8.U)
     ))
     switch (state) {
         is (REF_FSM.IDLE) {
@@ -138,7 +140,7 @@ class Refresh extends Module with RefreshMode{
         }
 
         is (REF_FSM.BLOCK_REQ) {
-            when(io.timeParam.RefreshMode === speculativeRefresh & refPend =/= 9.U & !io.SchedulerQueueIsEmpty){ // interupt refresh
+            when(io.timeParam.RefreshMode === speculativeRefresh & refPend =/= 8.U & !io.SchedulerQueueIsEmpty){ // interupt refresh
                 state := REF_FSM.IDLE
             }.elsewhen(io.refCmdGen.map(_.ack).reduce(_ && _)) { 
                 state := REF_FSM.PRE_WAIT  
@@ -146,7 +148,7 @@ class Refresh extends Module with RefreshMode{
         }
 
         is (REF_FSM.PRE_WAIT) {
-            when(io.timeParam.RefreshMode === speculativeRefresh & refPend =/= 9.U & !io.SchedulerQueueIsEmpty & !io.refArb.preOK){ // interupt refresh
+            when(io.timeParam.RefreshMode === speculativeRefresh & refPend =/= 8.U & !io.SchedulerQueueIsEmpty & !io.refArb.preOK){ // interupt refresh
                 state := REF_FSM.IDLE
             }.elsewhen (io.refArb.preOK) {
                 state := REF_FSM.PREISS

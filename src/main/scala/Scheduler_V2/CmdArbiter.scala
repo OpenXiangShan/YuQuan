@@ -52,7 +52,7 @@ class CmdArbiter[T <: SchedulerSCGCmd](depth: Int = 2, gen: T) extends Module {
 
   val fifo      = Module(new Queue(gen, depth, useSyncReadMem = true, pipe = true))
 
-  // TODO: rewrite arb
+
   // update prefers
 // Sequential Logic
   fcPrefer := MuxCase(fcPrefer, Seq(

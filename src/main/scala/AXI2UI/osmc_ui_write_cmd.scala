@@ -18,7 +18,7 @@ package OpenMc
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
-
+import java.util.ResourceBundle
 
 
 
@@ -37,24 +37,18 @@ val TOKEN_PARAM     = UICMD_PARAMETER.TOKEN_PARAMETER
 class UI_WRITE_CMDIO extends Bundle{
     //UI write address
     val ui_awio = Decoupled(new CMDIO())
-    //UI write data
     //FIFO
     val fifol2_awrio    = Flipped(new FIFO_RIO(FIFO_AWL2_PARAM.FIFO_WIDTH))    //connect fifo L1
-    val ready_stall =   Input(Bool())
     val ui_wtcmd_counter = Output(UInt(32.W))
 }
 //IO define
 val io = IO(new UI_WRITE_CMDIO())  
 /*********************************************************************************************************************************************************/
-
-
 val ui_wtcmd_cnt = RegInit(0.U(32.W))
-io.ui_wtcmd_counter := ui_wtcmd_cnt
-
-    ui_wtcmd_cnt := Mux(io.ui_awio.fire, ui_wtcmd_cnt + 1.U, ui_wtcmd_cnt) 
-
-    io.fifol2_awrio.ren := io.ui_awio.fire
-io.ui_awio.valid   := !io.fifol2_awrio.empty   &   ~io.ready_stall   
+io.ui_wtcmd_counter     := ui_wtcmd_cnt
+ui_wtcmd_cnt            := Mux(io.ui_awio.fire, ui_wtcmd_cnt + 1.U, ui_wtcmd_cnt) 
+io.fifol2_awrio.ren     := io.ui_awio.fire
+io.ui_awio.valid        := !io.fifol2_awrio.empty     
 io.ui_awio.bits.addr    := io.fifol2_awrio.rdata(UI_PAPAM.UI_ADDRW-1, 0)
 io.ui_awio.bits.token   := io.fifol2_awrio.rdata(FIFO_AWL2_PARAM.FIFO_WIDTH-1, UI_PAPAM.UI_ADDRW)
 io.ui_awio.bits.pri     := 0.U

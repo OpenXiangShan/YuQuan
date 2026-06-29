@@ -20,8 +20,6 @@ import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 import chisel3.experimental.hierarchy.public
 
-
-
 class AgeDetector(numEntries: Int, numEnq: Int, regOut: Boolean = true) extends Module {
   val io = IO(new Bundle {
     // NOTE: deq and enq may come at the same cycle.
@@ -76,6 +74,8 @@ class AgeDetector(numEntries: Int, numEnq: Int, regOut: Boolean = true) extends 
   val nextBest = getOldest(get_next_age)
 
   io.out := (if (regOut) best else nextBest)
+
+
   def getMuskedOldest(musk:UInt) = {
     VecInit((0 until numEntries).map { i =>
       val isMasked = musk(i)

@@ -22,7 +22,7 @@ import java.util.ResourceBundle
 
 
 class addrQueue(entnum : Int)extends Module{
-    val addrWidth = log2Ceil(entnum) 
+    val addrWidth = log2Ceil(entnum) //向上取整
     val io = IO(new Bundle {
         val enq   = Flipped(DecoupledIO(UInt(addrWidth.W)))
         val deq   = DecoupledIO(UInt(addrWidth.W))

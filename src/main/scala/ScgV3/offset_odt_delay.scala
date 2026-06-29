@@ -102,6 +102,7 @@ when(io.write_vld_phase0 | io.write_vld_phase1){
 val wr_offset = WireInit(0.U((1<<BUNDLE_PARAM.ODTBITS).W))
 val wr_delay  = RegInit(VecInit(Seq.fill(1<<PARAMETERWIDTH)(0.U((1<<BUNDLE_PARAM.ODTBITS).W))))
 val wr_odt    = WireInit(0.U(((1<<BUNDLE_PARAM.ODTBITS).W)))
+// dontTouch(wr_odt)
 wr_offset := Cat(wr_shift_reg_1(0),wr_shift_reg_0(0))
 wr_delay(0) := wr_offset
 (1 until(1<<PARAMETERWIDTH)).map(i => 

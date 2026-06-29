@@ -20,14 +20,14 @@ import  chisel3.experimental.FlatIO
 import  chisel3.util._
 import  BUNDLE_PARAM._
 
-class WrData_offset extends Module{
+class WrData_offset(width : Int) extends Module{
     val  io  =IO(new Bundle{
         val  vld            = Flipped(Bool())
         val  write_phase0   = Flipped(Bool())
         val  write_phase1   = Flipped(Bool())
         val  write_latency  = Flipped(UInt(BUNDLE_PARAM.McParamWidth.W))
-        val  write_data     = Flipped(UInt((BUNDLE_PARAM.DATABITS<<1).W))
-        val  offset_data    = UInt(BUNDLE_PARAM.DATABITS.W)
+        val  write_data     = Flipped(UInt((width<<1).W))
+        val  offset_data    = UInt(width.W)
         val  dfi_parameter_mode = Flipped(Bool())
     })
     val vld_delay    = VecInit(Seq.fill(3)(false.B))
@@ -35,7 +35,7 @@ class WrData_offset extends Module{
         vld_delay(1) := RegNext(vld_delay(0))
         vld_delay(2) := RegNext(vld_delay(1))
     val offset_type  = WireInit(false.B)
-    val offset_data   = WireInit(0.U(BUNDLE_PARAM.DATABITS.W))
+    val offset_data   = WireInit(0.U(width.W))
     //offset_type 计算
     when(io.write_latency(0) === 0.U){  //WL为偶数
         when(io.write_phase1 ){
@@ -50,11 +50,11 @@ class WrData_offset extends Module{
                 offset_type := 1.U
         }
     }
-    val shift_Reg  = RegInit(VecInit(Seq.fill(3)(0.U(BUNDLE_PARAM.DATABITS.W))))
+    val shift_Reg  = RegInit(VecInit(Seq.fill(3)(0.U(width.W))))
     //load data
     when(io.vld){
         when(offset_type && io.dfi_parameter_mode){ // 需要偏移
-            shift_Reg := Cat(shift_Reg(2)(BUNDLE_PARAM.DATABITS-1,BUNDLE_PARAM.DATABITS>>1),io.write_data,shift_Reg(0)(((BUNDLE_PARAM.DATABITS>>1)-1),0)).asTypeOf(shift_Reg)
+            shift_Reg := Cat(shift_Reg(2)(width-1,width>>1),io.write_data,shift_Reg(0)(((width>>1)-1),0)).asTypeOf(shift_Reg)
         }.otherwise{
             shift_Reg := Cat(shift_Reg(2),io.write_data).asTypeOf(shift_Reg)
         }

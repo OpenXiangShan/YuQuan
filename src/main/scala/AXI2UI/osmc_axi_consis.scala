@@ -18,6 +18,11 @@ package OpenMc
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
+import java.util.ResourceBundle
+
+
+
+
 
 class osmc_axi_consis[T <: AXI2UI_PARAMETER](
 //AXI parameter define

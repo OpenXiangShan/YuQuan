@@ -17,10 +17,8 @@ package OpenMc
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
-import java.util.ResourceBundle
-import apb._
+import APB._
 import OpenMc.BUNDLE_PARAM
-import os.truncate
 
 class DeqtoDFIIO (Token_Width : Int)extends Bundle{
             val wdata   = UInt(BUNDLE_PARAM.DATA_WIDTH.W)
@@ -31,7 +29,7 @@ class DeqtoDFIIO (Token_Width : Int)extends Bundle{
 }
 
 class GWDB extends Module{
-    val entryNums = CONFIGURABLE_PARAM.WrSchedulerQueueDepth << (BUNDLE_PARAM.RANK_WIDTH + BUNDLE_PARAM.BG_WIDTH) 
+    val entryNums = 1 << log2Ceil((BUNDLE_PARAM.WrSchedulerQueueDepth << (BUNDLE_PARAM.RANK_WIDTH + BUNDLE_PARAM.BG_WIDTH)) )
     val ScgQueueEntry = 1<<(BUNDLE_PARAM.RANK_WIDTH + BUNDLE_PARAM.BG_WIDTH + BUNDLE_PARAM.BANK_WIDTH)
     val io = IO(new Bundle{
         //cmd and data form addrmap

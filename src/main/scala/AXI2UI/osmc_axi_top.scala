@@ -18,19 +18,19 @@ package OpenMc
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
-import apb.AXI2UIRegIO
+import java.util.ResourceBundle
+// import scala.annotation.newMain
+import APB.AXI2UIRegIO
 
 class AXI_TOPIO extends Bundle{
 // axi
-//    val sysio   = new AXI_SYSIO()
     val awio    = new AXI_AWIO()
     val wio     = new AXI_WIO()
     val bio     = new AXI_BIO()
     val ario    = new AXI_ARIO()
     val rio     = new AXI_RIO()
 // ui
-    val ui_awio = Decoupled(new CMDIO())
-    val ui_wio  = Decoupled(new WrDataIO()) 
+    val ui_wreq = Decoupled(new WriteReqIO())
     val ui_ario = Decoupled(new CMDIO())
     val ui_rio  = Flipped(Decoupled(new RdDataIO()))
 // a2u regs
@@ -57,30 +57,26 @@ val CONSIS_PARAMETER    = AXITOP_PARAM
 
 val u_axi_write = Module(new osmc_axi_write(AXIW_PARAMETER))
     //AXI system
-    u_axi_write.io.axi_awio <>  io.awio
-    u_axi_write.io.axi_wio  <>  io.wio
-    u_axi_write.io.axi_bio  <>  io.bio
-    u_axi_write.io.ui_awio  <>  io.ui_awio
-    u_axi_write.io.ui_wio   <>  io.ui_wio
-    io.a2uregio.axiWrCmdCnt <> u_axi_write.io.axi_wtcmd_counter
-    io.a2uregio.uiWrCmdCnt  <> u_axi_write.io.ui_wtcmd_counter
-    u_axi_write.io.apb_config_done := io.apb_config_done
+    u_axi_write.io.axi_awio                 <> io.awio
+    u_axi_write.io.axi_wio                  <> io.wio
+    u_axi_write.io.axi_bio                  <> io.bio
+    u_axi_write.io.ui_wreq                  <> io.ui_wreq
+    u_axi_write.io.apb_config_done          := io.apb_config_done
 
 val u_axi_read  = Module(new osmc_axi_read(AXIR_PARAMETER))
-    u_axi_read.io.axi_ario  <>  io.ario
-    u_axi_read.io.axi_rio   <>  io.rio
-    u_axi_read.io.ui_ario   <>  io.ui_ario
-    u_axi_read.io.ui_rio    <>  io.ui_rio
-    u_axi_read.io.ready_stall   <>  u_axi_write.io.ready_stall
-    io.a2uregio.axiRdCmdCnt <> u_axi_read.io.axi_rdcmd_counter
-    io.a2uregio.uiRdCmdCnt <> u_axi_read.io.ui_rdcmd_counter
-    io.a2uregio.uiRbCmdCnt <> u_axi_read.io.ui_rdback_counter
-    u_axi_read.io.apb_config_done := io.apb_config_done
+    u_axi_read.io.axi_ario                  <> io.ario
+    u_axi_read.io.axi_rio                   <> io.rio
+    u_axi_read.io.ui_ario                   <> io.ui_ario
+    u_axi_read.io.ui_rio                    <> io.ui_rio
+    io.a2uregio.axiRdCmdCnt                 <> u_axi_read.io.axi_rdcmd_counter
+    io.a2uregio.uiRdCmdCnt                  <> u_axi_read.io.ui_rdcmd_counter
+    io.a2uregio.uiRbCmdCnt                  <> u_axi_read.io.ui_rdback_counter
+    u_axi_read.io.apb_config_done           := io.apb_config_done
+
 
 val u_axi_consis = Module(new osmc_axi_consis(CONSIS_PARAMETER))
-    u_axi_consis.io.consis_io.wconsis  <>  u_axi_write.io.wconsis
-    u_axi_consis.io.consis_io.rconsis  <>  u_axi_read.io.rconsis
-    u_axi_consis.io.consis_waddr_io    <>  u_axi_write.io.consis_addr_io
-    u_axi_consis.io.consis_raddr_io    <>  u_axi_read.io.consis_addr_io
-
+    u_axi_consis.io.consis_io.wconsis       <> u_axi_write.io.wconsis
+    u_axi_consis.io.consis_io.rconsis       <> u_axi_read.io.rconsis
+    u_axi_consis.io.consis_waddr_io         <> u_axi_write.io.consis_addr_io
+    u_axi_consis.io.consis_raddr_io         <> u_axi_read.io.consis_addr_io
 }

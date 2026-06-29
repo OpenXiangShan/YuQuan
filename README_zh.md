@@ -6,8 +6,8 @@
   - [项目介绍](#项目介绍)
   - [开源版本说明](#开源版本说明)
   - [快速入门指南](#快速入门指南)
-    - [DDR4 Baiyang-V0.8生成Verilog](#ddr4-baiyang-v08生成verilog)
-    - [DDR4 Baiyang-V0.8 FPGA平台极简测试环境](#ddr4-baiyang-v08-fpga平台极简测试环境)
+    - [DDR4 Baiyang-V0.9生成Verilog](#ddr4-baiyang-v09生成verilog)
+    - [DDR4 Baiyang-V0.9 FPGA平台极简测试环境](#ddr4-baiyang-v09-fpga平台极简测试环境)
   - [开源路线图](#开源路线图)
     - [FAMSE](#famse)
     - [其他工具](#其他工具)
@@ -36,13 +36,22 @@ style="width:7.65027in;height:4in" />
 
 ## 开源版本说明
 
-DDR4-Baiyang-V0.8版本代码已完成FPGA部署，并通过SPEC CPU2006基准测试（ref，整型+浮点）完整访存踪迹的满速压力测试。该IP支持：
+当前开源分支为 `DDR4_baiyang_v0.9`，包含 Baiyang v0.9 版本代码。该IP支持：
 。AXI4总线接口协议, Cacheline粒度读写
 。DFI3.1 PHY总线接口协议
 。DDR4-2400
 详见《白杨IP设计文档-v8.0》。
 
-即将推出的 DDR4 Baiyang-V0.9 版本已完成与香山昆明湖-V2核在Cadence Palladium Z2仿真平台上的集成。基于SPEC CPU2006基准测试（ref，整型+浮点），评估性能达14分/GHz，接近商用内存控制器IP性能水平。该版本预计3个月内发布。我们同时计划发布基于香山南湖核和真实内存条访存的测试环境。
+该版本已完成与香山昆明湖-V2 核在 Cadence Palladium Z2 仿真平台上的集成。基于 SPEC CPU2006 基准测试（ref、整型+浮点），评估性能达到 14 分/GHz，接近商用内存控制器 IP 的性能水平。
+
+相较 DDR4-Baiyang-V0.8，v0.9 的主要更新包括：
+1. AXI2UI 新增 static virtual channel 支持，可在多 AXI ID 场景下提供受限的跨 ID out-of-order 返回；
+2. SCG 路径新增 write mask 支持；
+3. Filter 模块合并 write command queue 与 write data queue，并同步更新 UI write interface；
+4. 修复 refresh 相关问题，包括 `tRP_timer` 问题和 burst refresh bug。
+详细的 v0.8 到 v0.9 版本差异见随附的 `Key_changes.md` 变更说明。
+
+上一版 DDR4-Baiyang-V0.8 已完成FPGA部署，并通过SPEC CPU2006基准测试（ref，整型+浮点）完整访存踪迹的满速压力测试。
 
 当前已开源的敏捷开发与验证工具包括MCSim和TinyPHY。
 
@@ -54,15 +63,15 @@ TinyPHY在FPGA平台上模拟DFI PHY功能，正确处理DFI接口读写请求�
 
 ## 快速入门指南
 
-### DDR4 Baiyang-V0.8生成Verilog
+### DDR4 Baiyang-V0.9生成Verilog
 
 运行 make verilog 以生成 verilog 代码。该命令会在 build/ 目录下生成多个 .sv 文件。
 
 更多信息详见 Makefile。
 
-### DDR4 Baiyang-V0.8 FPGA平台极简测试环境
+### DDR4 Baiyang-V0.9 FPGA平台极简测试环境
 
-为方便部署 DDR4 Baiyang-V0.8 到 FPGA平台，我们搭建了集成 MicroBlaze核、Baiyang IP 和 可编程PHY模拟器 (TinyPHY) 的极简测试环境。
+为方便部署 DDR4 Baiyang-V0.9 到 FPGA平台，我们搭建了集成 MicroBlaze核、Baiyang IP 和 可编程PHY模拟器 (TinyPHY) 的极简测试环境。
 
 更多信息详见 Release版本 DDR4-Baiyang-fpga-V1.0.tar.gz 或 DDR4-Baiyang-fpga-V1.0.zip 的 .md 文件和Makefile。
 

@@ -20,7 +20,7 @@ import chisel3.util._
 import chisel3.experimental.FlatIO
 import chisel3.experimental.BundleLiterals._
 import BUNDLE_PARAM._
-
+import os.stat
 
 class CmdGenArb extends Bundle {
     val actReq  = Bool()
@@ -73,6 +73,8 @@ class CommandGen extends Module{
     val curReq = Module(new Queue(io.request.bits.cloneType, 1, pipe = true))
     curReq.io.enq :<>= io.request
     curReq.io.deq.ready := false.B
+
+
     // state transition logic
     switch(state) {
         is(FSM.QUERY_ROW) {

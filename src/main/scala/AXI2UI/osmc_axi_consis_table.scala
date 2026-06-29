@@ -18,6 +18,9 @@ package OpenMc
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
+import java.util.ResourceBundle
+// import scala.annotation.newMain
+
 //用于AXI2UI模块一致性检查的地址记录表
 
 class osmc_axi_consis_table[T <: AXI2UI_PARAMETER](
@@ -71,11 +74,19 @@ val addr0_ext   =   Wire(Bool())
     ui_ptr     :=  Mux(ui_en ,ui_ptr  + 1.U, ui_ptr )
 
 val addr_se_memory  = RegInit(VecInit.fill(TABLE_DEPTH)(0.U((AXI_AW*2 + 1).W)))//Reg(Vec(TABLE_DEPTH, UInt((AXI_AW*2+1).W)))//
+//val addr_se = RegInit(0.U(TABLE_PARAM.AXI_PARAMETER.AXI_ADDRW.W))
+
 addr_se_memory(axi_ptr)  :=  Mux(axi_en, Cat(addr0_ext, addr0_end, addr0_start), addr_se_memory(axi_ptr))
+//ui_data  :=  Mux(r_en, memory(r_addr), r_data)
 
 //当AXI en时table写入项，当UI en且输出地址为当前AXI命令的末地址时清除项。addr0_ext信号根据当前AXI末地址-首地址是否大于UI的地址自增量来判断本次AXI命令是否被拓展为了多个UI命令
     axi_en :=  io.axi_aio.avalid  && io.axi_aio.aready
     ui_en  :=  io.ui_hsio.valid   && io.ui_hsio.ready  && (((~addr_se_memory(ui_ptr)(AXI_AW*2)) && (io.ui_aio.addr === addr_se_memory(ui_ptr)(AXI_AW -1, 0)))    |   ((addr_se_memory(ui_ptr)(AXI_AW*2)) && (io.ui_aio.addr === addr_se_memory(ui_ptr)(AXI_AW*2 -1, AXI_AW))))  
+
+//val addr_start  =   Wire(Vec(TABLE_DEPTH, UInt((AXI_AW*2).W)))
+//val addr_end    =   Wire(Vec(TABLE_DEPTH, UInt((AXI_AW*2).W)))
+  
+
 //将table的指针与表内项输出到consis模块作一致性比较
     io.consis_addr_io.addr_end(0)       :=  addr0_end
     io.consis_addr_io.addr_start(0)     :=  addr0_start

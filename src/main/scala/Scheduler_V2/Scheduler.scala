@@ -14,9 +14,9 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 package OpenMc
-import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals._
+import chisel3._
 import scopt.Read
 
 class SchedulerSCGCmd(tokLen:Int) extends SplitCmdIO(tokLen) {
@@ -24,27 +24,26 @@ class SchedulerSCGCmd(tokLen:Int) extends SplitCmdIO(tokLen) {
 }
 
 
-class Scheduler(WrentNum:Int = CONFIGURABLE_PARAM.WrSchedulerQueueDepth , RdentNum:Int = CONFIGURABLE_PARAM.RdSchedulerQueueDepth, fTokLen:Int = 10, cTokLen:Int = 16) extends Module with OSMCParameter {
+class Scheduler(WrentNum:Int = BUNDLE_PARAM.WrSchedulerQueueDepth , RdentNum:Int = BUNDLE_PARAM.RdSchedulerQueueDepth, fTokLen:Int = 7, cTokLen:Int = 13 , WfTokLen:Int = 9, WcTokLen:Int = 15) extends Module with OSMCParameter {
   val bgNum  = math.pow(2, BG_WIDTH+RANK_WIDTH).toInt
   val baPerBg  = math.pow(2, BANK_WIDTH).toInt
   val tokMax  = math.max(fTokLen, cTokLen)
   val org = StationOrg.PerBg
 
   val io = IO(new Bundle {
-    // 0 -> read, 1 -> write
-    val cmdIn = Vec(
-      2,
-      Flipped(new Bundle {
+    val cmdInRead =Flipped(new Bundle {
         val filterCmd = Decoupled(new SplitCmdIO(fTokLen))
         val cacheCmd  = Decoupled(new SplitCmdIO(cTokLen))
       })
-    )
-    // 0 -> filter, 1 -> cache
+    val cmdInWrite = Flipped(new Bundle {
+        val filterCmd = Decoupled(new SplitCmdIO(WfTokLen))
+        val cacheCmd  = Decoupled(new SplitCmdIO(WcTokLen))
+      })
     val cmdOut   = Vec(bgNum * baPerBg, Decoupled(new SchedulerSCGCmd(tokMax + 1)))
     val SchedulerQueueIsEmpty = Bool()
     val readBack = new ReadBackIO(new RbParam(cTokenLen = cTokLen, fTokenLen = fTokLen))
   })
-  val inAdapter = Module(new CmdDispatcher(fTokLen, cTokLen)).io
+  val inAdapter = Module(new CmdDispatcher(fTokLen, cTokLen,WfTokLen, WcTokLen)).io
   val confCtrl  = Seq.fill(bgNum)(Module(new ConflictCtrl(gen = inAdapter.Cmd2Conf(0).bits.cloneType))).map(_.io)
   val rdSt = Seq.fill(bgNum)(Module(new CmdStation(entNum = RdentNum, gen = new SplitCmdIO(confCtrl(0).cmdOut.bits.token.getWidth){val isRd = Bool()}, org, 3, 14))).map(_.io)
   val wrSt = Seq.fill(bgNum)(Module(new CmdStation(entNum = WrentNum, gen = confCtrl(0).cmdOut.bits.cloneType, org, 2, WrentNum))).map(_.io)
@@ -54,8 +53,10 @@ class Scheduler(WrentNum:Int = CONFIGURABLE_PARAM.WrSchedulerQueueDepth , RdentN
 // Connect Submodules' Input
 //------------------------------------------------------------
   // Adapter
-  inAdapter.filterCmd :<>= io.cmdIn.map(_.filterCmd)
-  inAdapter.cacheCmd  :<>= io.cmdIn.map(_.cacheCmd)
+  inAdapter.filterRcmd   <> io.cmdInRead.filterCmd
+  inAdapter.filterWcmd   <> io.cmdInWrite.filterCmd
+  inAdapter.cacheRcmd    <> io.cmdInRead.cacheCmd
+  inAdapter.cacheWcmd    <> io.cmdInWrite.cacheCmd
   // conflict control
   confCtrl.zipWithIndex.foreach{case (ctrl, idx) => ctrl.cmdIn :<>= inAdapter.Cmd2Conf(idx)}
   for (i <- 0 until bgNum) {

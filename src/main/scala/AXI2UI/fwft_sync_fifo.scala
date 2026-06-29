@@ -14,11 +14,14 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
+//FWFT类型的同步FIFO模块
+
 package OpenMc
 
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
+import java.util.ResourceBundle
 
 class fwft_sync_fifo[T <: FIFO_PARAMETER](
 //FIFO parameter define 
@@ -51,6 +54,9 @@ val memory = Reg(Vec(FIFO_PARAMETER.FIFO_DEPTH, UInt(FIFO_PARAMETER.FIFO_WIDTH.W
 val r_data  = Wire(UInt(FIFO_PARAMETER.FIFO_WIDTH.W))
 
 memory(w_addr)  :=  Mux(w_en, io.fifo_wio.wdata, memory(w_addr))
+
+//r_data为wire类型，故而r_data可以在r_en使能前便被准备
+//data_bypass可在fifo为空时直接将输入端的数据接入到r_data上
 data_bypass :=  (io.fifo_rio.empty)
 r_data  :=  Mux(data_bypass, io.fifo_wio.wdata, memory(r_addr))
 

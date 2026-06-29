@@ -18,18 +18,13 @@ package OpenMc
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
-
+import java.util.ResourceBundle
+import javax.xml.catalog.Catalog
 
 class osmc_axi_write_burst_clip[T <: AXI2UI_PARAMETER](
     CLIP_PAPAMETER  :   T                                                              //AW FIFO DWPTH
 )extends Module{
 
-
-//local parameter define
-val FIFO_WIDTH_AWR  =   CLIP_PAPAMETER.AXIWFIFO_PARAMETER.FIFOAWL1_PARAMETER.FIFO_WIDTH
-val FIFO_WIDTH_AWW  =   CLIP_PAPAMETER.AXIWFIFO_PARAMETER.FIFOAWL2_PARAMETER.FIFO_WIDTH
-val FIFO_WIDTH_WR   =   CLIP_PAPAMETER.AXIWFIFO_PARAMETER.FIFOWL1_PARAMETER.FIFO_WIDTH
-val FIFO_WIDTH_WW   =   CLIP_PAPAMETER.AXIWFIFO_PARAMETER.FIFOWL2_PARAMETER.FIFO_WIDTH
 
 val AXI_BW      =   CLIP_PAPAMETER.AXI_PARAMETER.AXI_BURSTW
 val AXI_AW      =   CLIP_PAPAMETER.AXI_PARAMETER.AXI_ADDRW
@@ -41,11 +36,18 @@ val AXI_DW      =   CLIP_PAPAMETER.AXI_PARAMETER.AXI_DATAW
 val AXI_TW      =   CLIP_PAPAMETER.AXI_PARAMETER.AXI_STRBW
 
 //IO define
+class TOKEN_COUNTIO_W extends Bundle{
+    val token_awen      =   Output(Bool())
+    val token_awready   =   Output(Bool()) 
+   // val token_wvalid    =   Output(Bool())
+}
 class CLIP_IO extends Bundle{
-    val fifol1_awrio    = Flipped(new FIFO_RIO(FIFO_WIDTH_AWR))   //connect fifo L1
-    val fifol2_awwio    = Flipped(new FIFO_WIO(FIFO_WIDTH_AWW))   //connect fifo L2
-    val fifol1_wrio     = Flipped(new FIFO_RIO(FIFO_WIDTH_WR))    //connect fifo L1
-    val fifol2_wwio     = Flipped(new FIFO_WIO(FIFO_WIDTH_WW))    //connect fifo L2
+    val awIn      = Flipped(Decoupled(new AXIWriteAddrInfo))
+    val cmdOut    = Decoupled(new CMDIO())
+    val wIn       = Flipped(Decoupled(new AXIWriteDataInfo))
+    val dataOut   = Decoupled(new WrDataIO())
+    // val token_inio      = Flipped(new TOKEN_IO())
+    // val token_countio   = new TOKEN_COUNTIO_W()
 }
 val io = IO(new CLIP_IO()) 
 
@@ -73,8 +75,6 @@ val BURST_BITS_INDEX    =   log2Floor(AXI_DW)
 val CMD_EXTANDW =   log2Floor(AXI_DW * (1 << (AXI_LW)) / UI_DW) + 1 
 val CMD_EXTAND_INDEX    =   log2Floor(UI_DW)
 
-val TOKEN_FIFO_PARAM    =   new FIFO_PARAMETER(TOKEN_PARAM.TOKEN_WIDTH, 4, log2Floor(4))
-
 ///
 val awaddr  = RegInit(0.U(AXI_AW.W))
 val awburst = RegInit(0.U(AXI_BW.W))
@@ -90,38 +90,41 @@ burst_bits  :=  (awlen+1.U) << BURST_BITS_INDEX
 UiCmdNum   :=  Cat(0.U, ((burst_bits-1.U)  >> CMD_EXTAND_INDEX)) + 1.U    //burst_bits-1 to avoid 512bit boundry; Round down signal exnum +1
 //计算需要几个AXI data拼接为一个UI data 
 val MergeNum = UI_DW/AXI_DW
-
 //暂存AXI 写地址通道信息
-
-awaddr  := Mux(io.fifol1_awrio.ren, io.fifol1_awrio.rdata(AXI_SW+AXI_QW+AXI_LW+AXI_BW+AXI_AW-1, AXI_SW+AXI_QW+AXI_LW+AXI_BW), awaddr)
-awburst := Mux(io.fifol1_awrio.ren, io.fifol1_awrio.rdata(AXI_SW+AXI_QW+AXI_LW+AXI_BW-1, AXI_SW+AXI_QW+AXI_LW), awburst)
-awlen   := Mux(io.fifol1_awrio.ren, io.fifol1_awrio.rdata(AXI_SW+AXI_QW+AXI_LW-1, AXI_SW+AXI_QW), awlen)
-awsize  := Mux(io.fifol1_awrio.ren, io.fifol1_awrio.rdata(AXI_SW+AXI_QW-1, AXI_QW), awsize)
-awqos   := Mux(io.fifol1_awrio.ren, io.fifol1_awrio.rdata(AXI_QW-1, 0), awqos)
+awaddr  := Mux(io.awIn.fire, io.awIn.bits.addr, awaddr)
+awburst := Mux(io.awIn.fire, io.awIn.bits.burst, awburst)
+awlen   := Mux(io.awIn.fire, io.awIn.bits.len, awlen)
+awsize  := Mux(io.awIn.fire, io.awIn.bits.size, awsize)
+awqos   := Mux(io.awIn.fire, io.awIn.bits.qos, awqos)
 //ui cmd addr 在读aw fifo1时对所有的地址寄存器进行更新
-(0 until BURST_CLIP_CMD_NUM_MAX).map(i => burst_addr(i) := Mux(io.fifol1_awrio.ren,io.fifol1_awrio.rdata(AXI_SW+AXI_QW+AXI_LW+AXI_BW+AXI_AW-1, AXI_SW+AXI_QW+AXI_LW+AXI_BW) +(i.U<<6) ,burst_addr(i)))
+(0 until BURST_CLIP_CMD_NUM_MAX).map(i => burst_addr(i) := Mux(io.awIn.fire,io.awIn.bits.addr +(i.U<<6) ,burst_addr(i)))
 //cmd counter
 val ui_cmd_counter = RegInit(0.U(CMD_EXTANDW.W))
 val ui_cmd_counter_en = RegInit(false.B)
-ui_cmd_counter_en := Mux(ui_cmd_counter_en,Mux(io.fifol2_awwio.wen,false.B,ui_cmd_counter_en),Mux(io.fifol1_awrio.ren,true.B,ui_cmd_counter_en))
+ui_cmd_counter_en := Mux(ui_cmd_counter_en,Mux(io.cmdOut.fire,false.B,ui_cmd_counter_en),Mux(io.awIn.fire,true.B,ui_cmd_counter_en))
 val  cmd_counter_add_cond    = WireInit(false.B)
-cmd_counter_add_cond        := ui_cmd_counter_en |io.fifol1_awrio.ren
+cmd_counter_add_cond        := ui_cmd_counter_en | io.awIn.fire
 val  cmd_counter_reset_cond  = WireInit(false.B)
 cmd_counter_reset_cond      := (ui_cmd_counter === UiCmdNum*MergeNum.U - 1.U) & cmd_counter_add_cond
 ui_cmd_counter              := Mux(cmd_counter_reset_cond,0.U,ui_cmd_counter + cmd_counter_add_cond)
+
+
 //read AXI AW fifo
-io.fifol1_awrio.ren   := ui_cmd_counter === 0.U &  ~io.fifol2_awwio.full & (~io.fifol1_awrio.empty)&(~ui_cmd_counter_en)
+io.awIn.ready   := ui_cmd_counter === 0.U & io.cmdOut.ready & (~ui_cmd_counter_en)
+
 //aw fifo2 write
-io.fifol2_awwio.wen   := (~io.fifol2_awwio.full) & (((ui_cmd_counter+1.U)%MergeNum.U) === 0.U)&ui_cmd_counter_en
+io.cmdOut.valid := (((ui_cmd_counter+1.U)%MergeNum.U) === 0.U)&ui_cmd_counter_en
 //写入的ui cmd addr 根据cmd_counter的当前值从地址寄存器组中取出
-io.fifol2_awwio.wdata := Cat(0.U,burst_addr(ui_cmd_counter/MergeNum.U))
+io.cmdOut.bits.addr := burst_addr(ui_cmd_counter/MergeNum.U)
+io.cmdOut.bits.token := 0.U
+io.cmdOut.bits.pri := 0.U
 
 /***************************************** data channel *****************************************/
 val data_counter           = RegInit(0.U(DATA_SPLICE_W.W))
 val UI_data                = RegInit(VecInit(Seq.fill(MergeNum)(0.U(AXI_DW.W))))
 val UI_data_mask           = RegInit(VecInit(Seq.fill(MergeNum)(0.U(AXI_TW.W))))
 val data_counter_add_cond  = RegInit(false.B)
- data_counter_add_cond    := io.fifol1_wrio.ren
+ data_counter_add_cond    := io.wIn.fire
 val data_counter_reset_cond = WireInit(false.B)
 data_counter_reset_cond   := (data_counter === MergeNum.U - 1.U) & data_counter_add_cond
 data_counter              := Mux(data_counter_reset_cond,0.U,data_counter + data_counter_add_cond)
@@ -132,8 +135,8 @@ val mask_slice_num  = WireInit(0.U(AXI_LW.W))
 mask_slice_num := MergeNum.U - ((awlen+1.U)/MergeNum.U) //awlen >=1 
 //read w fifo1 and load UI data
 val w_ren_flag      = RegInit(false.B)
-w_ren_flag          := Mux(w_ren_flag ,true.B,Mux(io.fifol1_awrio.ren,true.B,w_ren_flag) )
-io.fifol1_wrio.ren        := (~io.fifol1_wrio.empty) & (~io.fifol2_wwio.full)&w_ren_flag
+w_ren_flag          := Mux(w_ren_flag ,true.B,Mux(io.awIn.fire,true.B,w_ren_flag) )
+io.wIn.ready        := io.dataOut.ready & w_ren_flag
 
 
 when(MergeLast === 1.U){ //需要补空
@@ -142,14 +145,15 @@ when(MergeLast === 1.U){ //需要补空
         UI_data_mask(data_counter) := Fill(AXI_TW,0.U)
     }
 }.otherwise{
-    UI_data(0)     := Mux(io.fifol1_wrio.ren,io.fifol1_wrio.rdata(AXI_TW + AXI_DW, AXI_TW + 1),UI_data(0))
-    UI_data_mask(0):= Mux(io.fifol1_wrio.ren,Fill(AXI_TW,1.U),UI_data_mask(0)) 
-    (1 until MergeNum).map(i =>UI_data(i) := Mux(io.fifol1_wrio.ren , UI_data(i-1),UI_data(i))  )
-    (1 until MergeNum).map(i =>UI_data_mask(i) := Mux(io.fifol1_wrio.ren , UI_data_mask(i-1),UI_data_mask(i))  )
+    UI_data(0)     := Mux(io.wIn.fire,io.wIn.bits.data,UI_data(0))
+    UI_data_mask(0):= Mux(io.wIn.fire,Fill(AXI_TW,1.U),UI_data_mask(0)) 
+    (1 until MergeNum).map(i =>UI_data(i) := Mux(io.wIn.fire , UI_data(i-1),UI_data(i))  )
+    (1 until MergeNum).map(i =>UI_data_mask(i) := Mux(io.wIn.fire , UI_data_mask(i-1),UI_data_mask(i))  )
 }
 //w fifo2 write
-io.fifol2_wwio.wen := data_counter_reset_cond
-io.fifol2_wwio.wdata := Cat(Cat(UI_data_mask),Cat(UI_data))
+io.dataOut.valid := data_counter_reset_cond
+io.dataOut.bits.wdata := Cat(UI_data)
+io.dataOut.bits.wstrb := Cat(UI_data_mask)
 //
 
 

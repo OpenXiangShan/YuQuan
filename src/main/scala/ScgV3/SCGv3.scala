@@ -19,9 +19,10 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
 import BUNDLE_PARAM._
-import apb.SCGRegIO
+import ujson.False
+import APB.SCGRegIO
 import chisel3.SpecifiedDirection.Flip
-import apb.APBSlvtop
+import APB.APBSlvtop
 class  globalWdataIO (WriteTokenWidth : Int = BUNDLE_PARAM.TOKEN_WIDTH)extends  Bundle{
                     val wdata  = Flipped(UInt(BUNDLE_PARAM.DATA_WIDTH.W))
                     val wstrb  = Flipped(UInt((BUNDLE_PARAM.DATA_WIDTH>>3).W))
@@ -31,8 +32,8 @@ class  globalWdataIO (WriteTokenWidth : Int = BUNDLE_PARAM.TOKEN_WIDTH)extends  
 }
 
 class SCG_V3 extends Module {
-  val all_bank_num = 1<<(BG_WIDTH+RANK_WIDTH + BANK_WIDTH)
-  val WriteTokenWidth =  log2Ceil((CONFIGURABLE_PARAM.WrSchedulerQueueDepth << (BUNDLE_PARAM.RANK_WIDTH + BUNDLE_PARAM.BG_WIDTH)) + (1<<(BUNDLE_PARAM.RANK_WIDTH + BUNDLE_PARAM.BG_WIDTH + BUNDLE_PARAM.BANK_WIDTH)))
+  val all_bank_num = (1<<(BG_WIDTH+RANK_WIDTH))<<BANK_WIDTH
+  val WriteTokenWidth =  log2Ceil((BUNDLE_PARAM.WrSchedulerQueueDepth << (BUNDLE_PARAM.RANK_WIDTH + BUNDLE_PARAM.BG_WIDTH)) + (1<<(BUNDLE_PARAM.RANK_WIDTH + BUNDLE_PARAM.BG_WIDTH + BUNDLE_PARAM.BANK_WIDTH)))
   val io = IO(new Bundle {
     val dfi      = new dfiBundle
     val AsScgCmd = Vec(all_bank_num, Flipped(Decoupled(new fifo_adr(1))))
