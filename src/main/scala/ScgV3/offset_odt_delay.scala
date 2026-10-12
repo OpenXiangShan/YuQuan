@@ -34,6 +34,8 @@ class offset_odt_delay extends  Module{
     })
     val wr_offset_type = WireInit(false.B)
     val rd_offset_type = WireInit(false.B)
+    // dontTouch(wr_offset_type)
+    // dontTouch(rd_offset_type)
     val wr_shift_reg_0 = RegInit(VecInit(Seq.fill(1<<PARAMETERWIDTH)(0.U)))
     val wr_shift_reg_1 = RegInit(VecInit(Seq.fill(1<<PARAMETERWIDTH)(0.U)))
     val rd_shift_reg_0 = RegInit(VecInit(Seq.fill(1<<PARAMETERWIDTH)(0.U)))
@@ -153,6 +155,7 @@ val rd_offset = WireInit(0.U((1<<BUNDLE_PARAM.ODTBITS).W))
 val rd_delay  = RegInit(VecInit(Seq.fill(1<<PARAMETERWIDTH)(0.U((1<<BUNDLE_PARAM.ODTBITS).W))))
 val rd_odt    = WireInit(0.U(((1<<BUNDLE_PARAM.ODTBITS).W)))
 rd_offset := Cat(rd_shift_reg_1(0),rd_shift_reg_0(0))
+// dontTouch(rd_odt)
 rd_delay(0) := rd_offset
 (1 until(1<<PARAMETERWIDTH)).map(i => 
     rd_delay(i) := rd_delay(i-1)

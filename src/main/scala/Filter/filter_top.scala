@@ -39,12 +39,10 @@ class filter_top (val ADDR_WIDTH: Int, val PRIORITY_WIDTH: Int, val TOKEN_WIDTH:
         val wcache_en      = Output(Bool())
         val rcmd           = Flipped(Decoupled(new CMDIO()))
         val rcache_en      = Output(Bool())
-        val rui_data      = Decoupled(new RdDataIO())
 
         //ADDR MAP
         val wreq_addrmap  = Decoupled(new WriteReqIO(TOKEN_WIDTH))
         val rcmd_addrmap  = Decoupled(new CMDIO())
-        val raddr_data     = Flipped(Decoupled(new RdDataIO()))
 
         // ftregio regs
         val ftregio = Flipped(new FilterRegIO)
@@ -52,10 +50,7 @@ class filter_top (val ADDR_WIDTH: Int, val PRIORITY_WIDTH: Int, val TOKEN_WIDTH:
     io.ftregio := DontCare
     io.ftregio.rdCmdCnt := wCounter(io.rcmd_addrmap.fire, 32)
     io.ftregio.wrCmdCnt := wCounter(io.wreq_addrmap.fire, 32)
-// ---------------------readback data fifo------------------------
-    val rdata_queue = Module(new Queue(new RdDataIO(), 8, useSyncReadMem = true))
-    rdata_queue.io.enq :<>= io.raddr_data
-    io.rui_data :<>= rdata_queue.io.deq
+
     ////////////////////////////////////////////////////////////////////////////////
     val wreq_fifo = Module(new filter_fifo(new WriteReqIO(TOKEN_WIDTH), (req: WriteReqIO) => req.cmd.addr, 8))
     val rcmd_fifo = Module(new filter_fifo(new CMDIO(TOKEN_WIDTH), (cmd: CMDIO) => cmd.addr, 8))

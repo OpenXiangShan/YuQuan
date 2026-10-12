@@ -18,14 +18,15 @@ import _root_.circt.stage.ChiselStage
 import OpenMc._
 import OpenMc.mc_top
 
-object test extends App {
+object Main extends App {
   ChiselStage.emitSystemVerilogFile(
     new mc_top,
     args = Array(
-      "--target-dir", "build/",
-      "--split-verilog"
+      "--target-dir", "build/"
+      // "--split-verilog"
     ),
     firtoolOpts = Array(
+      // "--module-suffix=by",  // This adds the suffix to all generated modules
       "-strip-debug-info",
       "--lowering-options=disallowLocalVariables",
       "-disable-all-randomization"

@@ -34,7 +34,7 @@ class AXI_READIO extends Bundle{
     val axi_rio = new AXI_RIO()        
     //UI read
     val ui_ario = Decoupled(new CMDIO())
-    val ui_rio  = Flipped(Decoupled(new RdDataIO()))
+    val ui_rio  = Flipped(new ui_rdadtaIO())
     //consis
     val rconsis =   Input(Bool())
     val consis_addr_io  = new CONS_ADDR_IO()
