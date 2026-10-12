@@ -48,20 +48,6 @@ case class UI_PARAMETER(
 )
 object UI_PARAM extends UI_PARAMETER
 
-object AXI2UIQueueDepth {
-    val writeAwL1     = 16
-    val writeAwL2     = 8
-    val writeWL1      = 16
-    val writeWL2      = 16
-    val writeB        = 16
-    val writeBOrder   = 16
-    val readArL1      = 4
-    val readArL2      = 8
-    val readR         = 8
-    val readCmd       = 256
-    val readRobAddrQ  = 128
-}
-
 /**********FIFO_PARAMETER**********/
 case class FIFO_PARAMETER(
     FIFO_WIDTH   :   Int = 256,//128/*AXI_PARAM.AXI_ADDRW + AXI_PARAM.AXI_LENW +  + AXI_PARAM.AXI_BURSTWAXI_PARAM.AXI_IDW + AXI_PARAM.AXI_USERW + 1 + AXI_PARAM.AXI_QOSW + AXI_PARAM.AXI_SIZEW*/,  //AW FIFO WIDTH 
@@ -78,7 +64,19 @@ case class TOKEN_PARAMETER(
 object TOKEN_PARAM extends TOKEN_PARAMETER
 
 /********************************************************************************************************************************************************************/
-
+object AXI2UIQueueDepth {
+    val writeAwL1     = 16
+    val writeAwL2     = 8
+    val writeWL1      = 16
+    val writeWL2      = 16
+    val writeB        = 16
+    val writeBOrder   = 16
+    val readArL1      = 4
+    val readArL2      = 8
+    val readR         = 8
+    val readCmd       = 256
+    val readRobAddrQ  = 128
+}
 class AXI2UI_PARAMETER{
     val AXI_PARAMETER       = new AXI_PARAMETER()
     val UI_PARAMETER        = new UI_PARAMETER()
@@ -89,19 +87,19 @@ class AXI2UI_PARAMETER{
 object AXI2UI_PARAM extends AXI2UI_PARAMETER
 
 class AXIWFIFO_PARAMETER{
-    val FIFOAWL1_PARAMETER  = new FIFO_PARAMETER(AXI_PARAM.AXI_ADDRW + AXI_PARAM.AXI_LENW +  + AXI_PARAM.AXI_BURSTW + /*AXI_PARAM.AXI_IDW + AXI_PARAM.AXI_USERW*/ + 1 + AXI_PARAM.AXI_QOSW + AXI_PARAM.AXI_SIZEW, AXI2UIQueueDepth.writeAwL1, log2Floor(AXI2UIQueueDepth.writeAwL1))
-    val FIFOAWL2_PARAMETER  = new FIFO_PARAMETER(AXI_PARAM.AXI_ADDRW + TOKEN_PARAM.TOKEN_WIDTH, AXI2UIQueueDepth.writeAwL2, log2Floor(AXI2UIQueueDepth.writeAwL2))
-    val FIFOWL1_PARAMETER   = new FIFO_PARAMETER(AXI_PARAM.AXI_DATAW + AXI_PARAM.AXI_STRBW + 1, AXI2UIQueueDepth.writeWL1, log2Floor(AXI2UIQueueDepth.writeWL1))    //1=AXI_LASTW
-    val FIFOWL2_PARAMETER   = new FIFO_PARAMETER(UI_PARAM.UI_DATAW + UI_PARAM.UI_STRBW/*+TOKEN_PARAM.TOKEN_WIDTH*/, AXI2UIQueueDepth.writeWL2, log2Floor(AXI2UIQueueDepth.writeWL2))    //1=AXI_LASTW
-    val FIFOB_PARAMETER     = new FIFO_PARAMETER(AXI_PARAM.AXI_IDW + AXI_PARAM.AXI_USERW, AXI2UIQueueDepth.writeB, log2Floor(AXI2UIQueueDepth.writeB))    //16 = AW8+8
-    val FIFOBO_PARAMETER    = new FIFO_PARAMETER(1, AXI2UIQueueDepth.writeBOrder, log2Floor(AXI2UIQueueDepth.writeBOrder))
+    val FIFOAWL1_PARAMETER  = new FIFO_PARAMETER(AXI_PARAM.AXI_ADDRW + AXI_PARAM.AXI_LENW +  + AXI_PARAM.AXI_BURSTW + /*AXI_PARAM.AXI_IDW + AXI_PARAM.AXI_USERW*/ + 1 + AXI_PARAM.AXI_QOSW + AXI_PARAM.AXI_SIZEW, 16, log2Floor(16))
+    val FIFOAWL2_PARAMETER  = new FIFO_PARAMETER(AXI_PARAM.AXI_ADDRW + TOKEN_PARAM.TOKEN_WIDTH, 8, log2Floor(8))
+    val FIFOWL1_PARAMETER   = new FIFO_PARAMETER(AXI_PARAM.AXI_DATAW + AXI_PARAM.AXI_STRBW + 1, 16, log2Floor(16))    //1=AXI_LASTW
+    val FIFOWL2_PARAMETER   = new FIFO_PARAMETER(UI_PARAM.UI_DATAW + UI_PARAM.UI_STRBW/*+TOKEN_PARAM.TOKEN_WIDTH*/, 16, log2Floor(16))    //1=AXI_LASTW
+    val FIFOB_PARAMETER     = new FIFO_PARAMETER(AXI_PARAM.AXI_IDW + AXI_PARAM.AXI_USERW, 16, log2Floor(16))    //16 = AW8+8
+    val FIFOBO_PARAMETER    = new FIFO_PARAMETER(1, 16, log2Floor(16))
 }
 
 class AXIRFIFO_PARAMETER{
-    val FIFOARL1_PARAMETER  = new FIFO_PARAMETER(AXI_PARAM.AXI_ADDRW + AXI_PARAM.AXI_LENW +  + AXI_PARAM.AXI_BURSTW + /*AXI_PARAM.AXI_IDW + AXI_PARAM.AXI_USERW*/ + 1 + AXI_PARAM.AXI_QOSW + AXI_PARAM.AXI_SIZEW, AXI2UIQueueDepth.readArL1, log2Floor(AXI2UIQueueDepth.readArL1))
-    val FIFOARL2_PARAMETER  = new FIFO_PARAMETER(AXI_PARAM.AXI_ADDRW + TOKEN_PARAM.TOKEN_WIDTH, AXI2UIQueueDepth.readArL2, log2Floor(AXI2UIQueueDepth.readArL2))
-    val FIFORL1_PARAMETER   = new FIFO_PARAMETER(AXI_PARAM.AXI_DATAW + 1, AXI2UIQueueDepth.readR, log2Floor(AXI2UIQueueDepth.readR))    //1=AXI_LASTW             //keep same with FIFOCMD_TOKEN  in Depth
-    val FIFOCMD_PARAMETER   = new FIFO_PARAMETER(AXI_PARAM.AXI_LENW  + AXI_PARAM.AXI_SIZEW, AXI2UIQueueDepth.readCmd, log2Floor(AXI2UIQueueDepth.readCmd))        //keep same with FIFOCMD        in Depth    
-    val FIFOCMD_TOKEN_PARAMETER = new FIFO_PARAMETER(TOKEN_PARAM.TOKEN_WIDTH, AXI2UIQueueDepth.readCmd, log2Floor(AXI2UIQueueDepth.readCmd))
-    val RROB_ADDQ_PARAMETER = new FIFO_PARAMETER(7, AXI2UIQueueDepth.readRobAddrQ, log2Floor(AXI2UIQueueDepth.readRobAddrQ))
+    val FIFOARL1_PARAMETER  = new FIFO_PARAMETER(AXI_PARAM.AXI_ADDRW + AXI_PARAM.AXI_LENW +  + AXI_PARAM.AXI_BURSTW + /*AXI_PARAM.AXI_IDW + AXI_PARAM.AXI_USERW*/ + 1 + AXI_PARAM.AXI_QOSW + AXI_PARAM.AXI_SIZEW, 4, log2Floor(4))
+    val FIFOARL2_PARAMETER  = new FIFO_PARAMETER(AXI_PARAM.AXI_ADDRW + TOKEN_PARAM.TOKEN_WIDTH, 8, log2Floor(8))
+    val FIFORL1_PARAMETER   = new FIFO_PARAMETER(AXI_PARAM.AXI_DATAW + 1, 8, log2Floor(8))    //1=AXI_LASTW             //keep same with FIFOCMD_TOKEN  in Depth
+    val FIFOCMD_PARAMETER   = new FIFO_PARAMETER(AXI_PARAM.AXI_LENW  + AXI_PARAM.AXI_SIZEW, 256, log2Floor(256))        //keep same with FIFOCMD        in Depth    
+    val FIFOCMD_TOKEN_PARAMETER = new FIFO_PARAMETER(TOKEN_PARAM.TOKEN_WIDTH, 256, log2Floor(256))
+    val RROB_ADDQ_PARAMETER = new FIFO_PARAMETER(7, 128, log2Floor(128))
 }

@@ -19,7 +19,6 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
 import java.util.ResourceBundle
-//import scala.annotation.newMain
 import javax.xml.catalog.Catalog
 
 class osmc_axi_write_burst_clip[T <: AXI2UI_PARAMETER](
@@ -91,20 +90,12 @@ burst_bits  :=  (awlen+1.U) << BURST_BITS_INDEX
 UiCmdNum   :=  Cat(0.U, ((burst_bits-1.U)  >> CMD_EXTAND_INDEX)) + 1.U    //burst_bits-1 to avoid 512bit boundry; Round down signal exnum +1
 //计算需要几个AXI data拼接为一个UI data 
 val MergeNum = UI_DW/AXI_DW
-
 //暂存AXI 写地址通道信息
-
 awaddr  := Mux(io.awIn.fire, io.awIn.bits.addr, awaddr)
 awburst := Mux(io.awIn.fire, io.awIn.bits.burst, awburst)
 awlen   := Mux(io.awIn.fire, io.awIn.bits.len, awlen)
 awsize  := Mux(io.awIn.fire, io.awIn.bits.size, awsize)
 awqos   := Mux(io.awIn.fire, io.awIn.bits.qos, awqos)
-//token fifo fwft
-// val u_token_aw_fifo = Module(new fwft_sync_fifo(TOKEN_FIFO_PARAM))
-//aw_token_wen 这里是因为token的使能信号到返回token之间有一拍延时，设计这个信号作为cmd counter
-//的add_cond
-
-
 //ui cmd addr 在读aw fifo1时对所有的地址寄存器进行更新
 (0 until BURST_CLIP_CMD_NUM_MAX).map(i => burst_addr(i) := Mux(io.awIn.fire,io.awIn.bits.addr +(i.U<<6) ,burst_addr(i)))
 //cmd counter
@@ -117,8 +108,7 @@ val  cmd_counter_reset_cond  = WireInit(false.B)
 cmd_counter_reset_cond      := (ui_cmd_counter === UiCmdNum*MergeNum.U - 1.U) & cmd_counter_add_cond
 ui_cmd_counter              := Mux(cmd_counter_reset_cond,0.U,ui_cmd_counter + cmd_counter_add_cond)
 
-// io.token_countio.token_awen := (~io.fifol2_awwio.full) & ((ui_cmd_counter%MergeNum.U) === 0.U)&cmd_counter_add_cond
-// io.token_countio.token_awready := ~io.fifol2_awwio.full
+
 //read AXI AW fifo
 io.awIn.ready   := ui_cmd_counter === 0.U & io.cmdOut.ready & (~ui_cmd_counter_en)
 

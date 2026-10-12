@@ -22,14 +22,8 @@ import java.util.ResourceBundle
 // import scala.annotation.newMain
 import APB.AXI2UIRegIO
 
-class ui_rdadtaIO extends Bundle{
-    val dataFromCache = DecoupledIO(new RdDataIO())
-    val dataFormScg   = DecoupledIO(new RdDataIO())
-}
-
 class AXI_TOPIO extends Bundle{
 // axi
-//    val sysio   = new AXI_SYSIO()
     val awio    = new AXI_AWIO()
     val wio     = new AXI_WIO()
     val bio     = new AXI_BIO()
@@ -38,7 +32,7 @@ class AXI_TOPIO extends Bundle{
 // ui
     val ui_wreq = Decoupled(new WriteReqIO())
     val ui_ario = Decoupled(new CMDIO())
-    val ui_rio  = Flipped(new ui_rdadtaIO())
+    val ui_rio  = Flipped(Decoupled(new RdDataIO()))
 // a2u regs
     val a2uregio = Flipped(new AXI2UIRegIO)
 // apb config done 
@@ -67,8 +61,6 @@ val u_axi_write = Module(new osmc_axi_write(AXIW_PARAMETER))
     u_axi_write.io.axi_wio                  <> io.wio
     u_axi_write.io.axi_bio                  <> io.bio
     u_axi_write.io.ui_wreq                  <> io.ui_wreq
-    io.a2uregio.axiWrCmdCnt                 <> 0.U
-    io.a2uregio.uiWrCmdCnt                  <> 0.U
     u_axi_write.io.apb_config_done          := io.apb_config_done
 
 val u_axi_read  = Module(new osmc_axi_read(AXIR_PARAMETER))
@@ -87,11 +79,4 @@ val u_axi_consis = Module(new osmc_axi_consis(CONSIS_PARAMETER))
     u_axi_consis.io.consis_io.rconsis       <> u_axi_read.io.rconsis
     u_axi_consis.io.consis_waddr_io         <> u_axi_write.io.consis_addr_io
     u_axi_consis.io.consis_raddr_io         <> u_axi_read.io.consis_addr_io
-
-// val u_latency = Module(new ReadLatency()).io
-//     u_latency.arready                       := io.ario.arready
-//     u_latency.arvalid                       := io.ario.arvalid
-//     u_latency.rlast                         := io.rio.rlast
-//     u_latency.rready                        := io.rio.rready
-//     u_latency.rvalid                        := io.rio.rvalid
 }

@@ -28,8 +28,10 @@ class RdDataBuffer extends Module{
         val dataIn    = Input(UInt(BUNDLE_PARAM.DATA_WIDTH.W)) //in data fifo
         val dataEn    = Input(Bool())
 
-        val Data2Axi  = Decoupled(new RdDataIO())
-        val Data2Cache= Decoupled(new RdDataIO(TOKENBITS-1))
+        val dataOut   = DecoupledIO(new Bundle {
+            val data  = Output(UInt(BUNDLE_PARAM.DATA_WIDTH.W))
+            val token = Output(UInt(BUNDLE_PARAM.TOKENBITS.W))
+        })
     })
     //token sync_fifo
     val tokenFifo  = Module{
@@ -40,23 +42,19 @@ class RdDataBuffer extends Module{
         new Queue(UInt(BUNDLE_PARAM.DATA_WIDTH.W), 16)
     }
     val ren = dataFifo.io.deq.valid & tokenFifo.io.deq.valid
-    val toCache = Reverse(tokenFifo.io.deq.bits)(0)
+
 
     tokenFifo.io.enq.bits  := io.tokenIn 
     tokenFifo.io.enq.valid := io.tokenEn
-    tokenFifo.io.deq.ready := ren & Mux(toCache,io.Data2Cache.ready,io.Data2Axi.ready)
+    tokenFifo.io.deq.ready := ren & io.dataOut.ready
     assert(tokenFifo.io.enq.ready, "tokenFifo.enq.ready is not ready")
     
     dataFifo.io.enq.bits  := io.dataIn
     dataFifo.io.enq.valid := io.dataEn
-    dataFifo.io.deq.ready := ren & Mux(toCache,io.Data2Cache.ready,io.Data2Axi.ready)
+    dataFifo.io.deq.ready := ren & io.dataOut.ready
     assert(dataFifo.io.enq.ready, "dataFifo.enq.ready is not ready")
 
-    io.Data2Axi.valid      := ren & ~toCache
-    io.Data2Axi.bits.rdata  := dataFifo.io.deq.bits
-    io.Data2Axi.bits.rtoken := tokenFifo.io.deq.bits
-
-    io.Data2Cache.valid      := ren & toCache
-    io.Data2Cache.bits.rdata  := dataFifo.io.deq.bits
-    io.Data2Cache.bits.rtoken := tokenFifo.io.deq.bits(TOKENBITS-2, 0)
+    io.dataOut.valid      := ren
+    io.dataOut.bits.data  := dataFifo.io.deq.bits
+    io.dataOut.bits.token := tokenFifo.io.deq.bits
 }

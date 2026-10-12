@@ -1,18 +1,3 @@
-/***************************************************************************************
-* Copyright (c) 2021-2026 Beijing Institute of Open Source Chip (BOSC)
-* Copyright (c) 2020-2026 Institute of Computing Technology, Chinese Academy of Sciences (ICT，CAS)
-* 
-* YuQuan is licensed under Mulan PSL v2.
-* You can use this software according to the terms and conditions of the Mulan PSL v2.
-* You may obtain a copy of Mulan PSL v2 at:
-*          http://license.coscl.org.cn/MulanPSL2
-*
-* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND,
-* EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
-* MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
-*   
-* See the Mulan PSL v2 for more details.
-***************************************************************************************/
 package OpenMc
 
 import chisel3._
@@ -60,9 +45,6 @@ val AXI_SW  =   AXIW_PARAMETER.AXI_PARAMETER.AXI_SIZEW
 val AXI_QW  =   AXIW_PARAMETER.AXI_PARAMETER.AXI_QOSW
 val AXI_IW  =   AXIW_PARAMETER.AXI_PARAMETER.AXI_IDW
 val AXI_UW  =   AXIW_PARAMETER.AXI_PARAMETER.AXI_USERW
-/*****************************************************************************************************************************************************/
-
-// def fwftQueue[T <: Data](gen: T, depth: Int) = Module(new Queue(gen, depth, flow = true))
 
 //IO define
 val io = IO(new AXI_WRITEIO())  
@@ -177,10 +159,3 @@ val w_axi_consis_table = Module(new osmc_axi_consis_table(TABLE_PARAM))
 
   
 }
-
-
-
-
-
-
-

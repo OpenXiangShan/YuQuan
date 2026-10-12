@@ -51,7 +51,6 @@ class  DFIPhaseCtrl (WriteTokenWidth : Int = BUNDLE_PARAM.TOKEN_WIDTH)extends Mo
 
         val dfi_write_ph = Vec(2, Bool())
         val dfi_read_ph  = Vec(2, Bool())
-        // val write_bank   = UInt((BUNDLE_PARAM.RANK_WIDTH + BUNDLE_PARAM.BGBITS + BUNDLE_PARAM.BABITS).W)
         val write_token  = UInt(WriteTokenWidth.W) 
         val read_token   = UInt(BUNDLE_PARAM.TOKENBITS.W)
 
@@ -106,19 +105,15 @@ class  DFIPhaseCtrl (WriteTokenWidth : Int = BUNDLE_PARAM.TOKEN_WIDTH)extends Mo
 
     val hasRefReqs = io.winCmd.refIss | io.winCmd.preIss | io.winCmd.zqIss
     val hasnormalReqs = io.winCmd.actReq | io.winCmd.casReq | io.winCmd.preReq
-    //performance monitor
     val actCount  = RegInit(0.U(32.W))//统计MC行为,忽略背景操作
-    val casCount  = RegInit(0.U(32.W))
     val WrCount   = RegInit(0.U(32.W))
     val RdCount   = RegInit(0.U(32.W))
     val PreCount  = RegInit(0.U(32.W))
     dontTouch(actCount)
-    dontTouch(casCount)
     dontTouch(WrCount)
     dontTouch(RdCount)
     dontTouch(PreCount)
     actCount := actCount + io.winCmd.actReq
-    casCount := casCount + io.winCmd.casReq
     WrCount  := WrCount  + (!io.winCmd.casRead & io.winCmd.casReq)
     RdCount  := RdCount  + (io.winCmd.casRead  & io.winCmd.casReq)
     PreCount := PreCount + io.winCmd.preReq
@@ -150,12 +145,6 @@ class  DFIPhaseCtrl (WriteTokenWidth : Int = BUNDLE_PARAM.TOKEN_WIDTH)extends Mo
              is("b100".U){   //single phase
                  dfiCmdSet(false.B,false.B,true.B,io.winCmd.actRank.asBool,PHASE0,ACT,io.winCmd.actBa,io.winCmd.actBg,io.winCmd.actRow)
              }
-            //  is("b0100".U){
-            //      io.read_token   := io.winCmd.casTok
-            //      io.dfi_read_ph(0) := io.winCmd.casRead
-            //      io.dfi_write_ph(0):= !io.winCmd.casRead
-            //      dfiCmdSet(false.B,false.B,false.B,io.winCmd.casRank.asBool,PHASE0,READ,io.winCmd.casBa,io.winCmd.casBg,Cat(2.U(3.W), Mux(io.winCmd.casRead, READ(0), WRITE(0)), 4.U(4.W), io.winCmd.casCol))
-            //  }
              is("b010".U){
                  io.dfi_read_ph(0) := io.winCmd.casRead
                  io.dfi_write_ph(0):= !io.winCmd.casRead
@@ -169,39 +158,5 @@ class  DFIPhaseCtrl (WriteTokenWidth : Int = BUNDLE_PARAM.TOKEN_WIDTH)extends Mo
  
     io.write_token:= io.winCmd.casTok(WriteTokenWidth -1 ,0)
     io.read_token := io.winCmd.casTok
-    // priority: act > cas > pre
-    // switch (Cat(io.winCmd.actReq, io.winCmd.preReq, io.winCmd.casReq)) {
-    //     is("b001".U) {
-    //         setDfiCommand(0, Mux(io.winCmd.casRead, READ, WRITE), io.winCmd.casBa, io.winCmd.casBg, Cat(2.U(3.W), Mux(io.winCmd.casRead, READ(0), WRITE(0)), 4.U(4.W), io.winCmd.casCol))
-    //         io.dfi_read_ph(0)  := io.winCmd.casRead
-    //         io.dfi_write_ph(0) := !io.winCmd.casRead
-    //     } 
 
-    //     is ("b010".U) {
-    //         setDfiCommand(0, PRE, io.winCmd.preBa, io.winCmd.preBg, "b00_1000_0000_0000_0000".U)
-    //     }
-
-    //     is ("b011".U) {
-    //         setDfiCommand(1, PRE, io.winCmd.preBa, io.winCmd.preBg, "b00_1000_0000_0000_0000".U)
-    //         setDfiCommand(0, Mux(io.winCmd.casRead, READ, WRITE), io.winCmd.casBa, io.winCmd.casBg, Cat(2.U(3.W), Mux(io.winCmd.casRead, READ(0), WRITE(0)), 4.U(4.W), io.winCmd.casCol))
-    //         io.dfi_read_ph(0)  := io.winCmd.casRead
-    //         io.dfi_write_ph(0) := !io.winCmd.casRead
-    //     }
-
-    //     is ("b100".U) {
-    //         setDfiCommand(0, ACT, io.winCmd.actBa, io.winCmd.actBg, io.winCmd.actRow)
-    //     }
-
-    //     is ("b101".U) {
-    //         setDfiCommand(0, ACT, io.winCmd.actBa, io.winCmd.actBg, io.winCmd.actRow)
-    //         setDfiCommand(1, Mux(io.winCmd.casRead, READ, WRITE), io.winCmd.casBa, io.winCmd.casBg, Cat(2.U(3.W), Mux(io.winCmd.casRead, READ(0), WRITE(0)), 4.U(4.W), io.winCmd.casCol))
-    //         io.dfi_read_ph(1)  := io.winCmd.casRead
-    //         io.dfi_write_ph(1) := !io.winCmd.casRead
-    //     }
-
-    //     is ("b110".U) {
-    //         setDfiCommand(0, ACT, io.winCmd.actBa, io.winCmd.actBg, io.winCmd.actRow)
-    //         setDfiCommand(1, PRE, io.winCmd.preBa, io.winCmd.preBg, "b00_1000_0000_0000_0000".U)
-    //     }
-    // }
 }

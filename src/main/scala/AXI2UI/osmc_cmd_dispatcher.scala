@@ -26,8 +26,7 @@ class osmc_cmd_dispatcher (VirtualChannelNum : Int , PerRobEntryNum : Int)extend
     val axi_command_deq = DecoupledIO(new CMDIO())
     val Vid2Rob         = Vec(VirtualChannelNum, DecoupledIO(new TokenEnqBundle))
   })
-    val vidWidth = math.max(1, log2Ceil(VirtualChannelNum))
-    val VID   = Wire(UInt(vidWidth.W))
+    val VID   = WireInit(log2Ceil(VirtualChannelNum).U)
     if (VirtualChannelNum == 1){
         VID := 0.U
     }else if (VirtualChannelNum == 2){
@@ -36,31 +35,19 @@ class osmc_cmd_dispatcher (VirtualChannelNum : Int , PerRobEntryNum : Int)extend
         VID := io.axi_command_enq.bits.id(log2Ceil(VirtualChannelNum)-1,0)
     }
     val ChildToken  = RegInit(VecInit(Seq.fill(VirtualChannelNum)(0.U(log2Ceil(PerRobEntryNum).W))))
-
-    val selectedRobReady = if (VirtualChannelNum == 1) {
-        io.Vid2Rob(0).ready
-    } else {
-        Mux1H((0 until VirtualChannelNum).map(i => (VID === i.U) -> io.Vid2Rob(i).ready))
-    }
-    val selectedChildToken = if (VirtualChannelNum == 1) ChildToken(0) else ChildToken(VID)
-    val uiToken = if (VirtualChannelNum == 1) selectedChildToken else Cat(VID, selectedChildToken)
-
-    io.axi_command_enq.ready            := selectedRobReady & io.axi_command_deq.ready
-    io.axi_command_deq.bits.token       := uiToken.asTypeOf(io.axi_command_deq.bits.token)
+    io.axi_command_enq.ready            := io.Vid2Rob(VID).ready & io.axi_command_deq.ready
+    io.axi_command_deq.bits.token       := Cat(VID,ChildToken(VID)).asTypeOf(io.axi_command_deq.bits.token)
     io.axi_command_deq.bits.addr        := io.axi_command_enq.bits.addr
     io.axi_command_deq.bits.pri         := false.B
-    io.axi_command_deq.valid            := io.axi_command_enq.valid & selectedRobReady
+    io.axi_command_deq.valid            := io.axi_command_enq.valid & io.Vid2Rob(VID).ready
     for(i <- 0 until VirtualChannelNum){
-        val isSelected = VID === i.U
-        io.Vid2Rob(i).valid             := io.axi_command_enq.valid & io.axi_command_deq.ready & isSelected
-        when(isSelected && io.axi_command_enq.fire){
-            ChildToken(i) := ChildToken(i) + 1.U
-        }
-        io.Vid2Rob(i).bits.token        := ChildToken(i)
-        io.Vid2Rob(i).bits.addr         := io.axi_command_enq.bits.addr
-        io.Vid2Rob(i).bits.id           := io.axi_command_enq.bits.id
-        io.Vid2Rob(i).bits.len          := io.axi_command_enq.bits.len
-        io.Vid2Rob(i).bits.size         := io.axi_command_enq.bits.size
+        io.Vid2Rob(i).valid             := VID === i.U && io.axi_command_enq.fire
+        ChildToken(i)                   := Mux(VID === i.U && io.axi_command_enq.fire,ChildToken(i)+1.U, ChildToken(i))
+        io.Vid2Rob(i).bits.token        := Mux(io.Vid2Rob(i).fire,ChildToken(i),0.U)
+        io.Vid2Rob(i).bits.addr         := Mux(io.Vid2Rob(i).fire,io.axi_command_enq.bits.addr,0.U)
+        io.Vid2Rob(i).bits.id           := Mux(io.Vid2Rob(i).fire,io.axi_command_enq.bits.id,0.U)
+        io.Vid2Rob(i).bits.len          := Mux(io.Vid2Rob(i).fire,io.axi_command_enq.bits.len,0.U)
+        io.Vid2Rob(i).bits.size         := Mux(io.Vid2Rob(i).fire,io.axi_command_enq.bits.size,0.U)
     }
 }
  

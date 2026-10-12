@@ -77,7 +77,7 @@ sealed class CacheWraperIO extends CacheBundle {
 
     // Interface With AS
     val RdCmd2AS = Decoupled(new SplitCmdIO(cTokenLen))
-    val dataFromAS = Flipped(Decoupled(new RdDataIO(cTokenLen)))
+    val dataFromAS = Flipped(Decoupled(new DataIO(cTokenLen)))
     val WrCmd2AS = Decoupled(new SplitCmdIO)
     val WrData2AS = Decoupled(new WrDataIO)
 }

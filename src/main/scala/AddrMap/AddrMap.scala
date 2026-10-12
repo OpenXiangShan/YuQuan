@@ -21,9 +21,29 @@ import chisel3.util._
 sealed abstract class AddrMapBundle extends Bundle with OSMCParameter 
 sealed abstract class AddrMapModule extends Module with OSMCParameter
 
+
+class BufferWithArb(nRdData: Int = 2, qDepth: Int = 64) extends AddrMapModule {
+    val io = IO(new Bundle {
+        val inAS = Flipped(Decoupled(new RdDataIO))
+        val inCache = Flipped(Decoupled(new RdDataIO))
+        val out = Decoupled(new RdDataIO)
+    })
+    // queue(0) --Cache, queue(1) --As
+    val queues = Seq.fill(nRdData)(Module(new Queue(chiselTypeOf(io.out.bits), qDepth)))
+    queues(0).io.enq <> io.inCache
+    queues(1).io.enq <> io.inAS
+
+    val  rDataArbiter = Module(new Arbiter(chiselTypeOf(io.out.bits), nRdData))
+    rDataArbiter.io.in <> queues.map(_.io.deq)
+    
+    io.out <> rDataArbiter.io.out
+    io.out.bits := Mux(rDataArbiter.io.out.fire, rDataArbiter.io.out.bits, 0.U.asTypeOf(new RdDataIO))
+}
+
 class AddrMapIO extends AddrMapBundle {
     // read channel with Filter
     val RdCmdFromFilter = Flipped(Decoupled(new CMDIO))
+    val RdData2Filter = Decoupled(new RdDataIO)
     val RdIsToAS = Input(Bool())
     // write channel with Filter
     val WrReqFromFilter = Flipped(Decoupled(new WriteReqIO))
@@ -31,12 +51,14 @@ class AddrMapIO extends AddrMapBundle {
 
     // read channel with Cache
     val RdCmd2Cache = Decoupled(new SplitCmdIO)
+    val RdDataFromCache = Flipped(Decoupled(new RdDataIO))
     // write channel with Cache
     val WrCmd2Cache = Decoupled(new SplitCmdIO)
     val WrData2Cache = Decoupled(new WrDataIO)
 
     // read channel with AS
     val RdCmd2AS = Decoupled(new SplitCmdIO)
+    val RdDataFromAS = Flipped(Decoupled(new RdDataIO))
     // write channel with AS
     val WrCmd2AS = Decoupled(new SplitCmdIO)
     val WrData2AS = Decoupled(new WrDataIO)
@@ -63,10 +85,12 @@ class AddrMap extends AddrMapModule {
 
     val MEM_ADDR_MAP = RegNext(io.ADDRMAP)
 
+
     val rdCmdSplit = Wire(chiselTypeOf(io.RdCmd2AS.bits))
     val wrCmdSplit = Wire(chiselTypeOf(io.RdCmd2AS.bits))
     wrCmdSplit := DontCare
     rdCmdSplit := DontCare
+
     val rdIsToAS = io.RdIsToAS
     val wrIsToAS = io.WrIsToAS
     val rdCmdAddr = io.RdCmdFromFilter.bits.addr >> 3
@@ -76,7 +100,6 @@ class AddrMap extends AddrMapModule {
     val wrRank = if(RANKS == 1) 0.U else wrCmdAddr(RANK_MSB, RANK_LSB)
     rdCmdSplit.rank := rdRank
     wrCmdSplit.rank := wrRank
-    // Extract row,col,bg,bank number
         when(MEM_ADDR_MAP === 0.U) {
             rdCmdSplit.row := rdCmdAddr(ROW_MSB_0, ROW_LSB_0)
             rdCmdSplit.col := Cat(rdCmdAddr(COL_MSB_0, COL_LSB_0), rdCmdAddr(2, 0))
@@ -98,9 +121,6 @@ class AddrMap extends AddrMapModule {
             rdCmdSplit.bg   := rdCmdAddr(3+BG_WIDTH-1,3)
             rdCmdSplit.bank := rdCmdAddr(BG_WIDTH+COL_WIDTH+BANK_WIDTH-1,BG_WIDTH+COL_WIDTH)
         }
-    // }
-
-    // when(io.WrCmdFromFilter.fire) {
         when(MEM_ADDR_MAP === 0.U) {
             wrCmdSplit.row := wrCmdAddr(ROW_MSB_0, ROW_LSB_0)
             wrCmdSplit.col := Cat(wrCmdAddr(COL_MSB_0, COL_LSB_0), wrCmdAddr(2, 0))
@@ -122,23 +142,28 @@ class AddrMap extends AddrMapModule {
             wrCmdSplit.bg   := wrCmdAddr(3+BG_WIDTH-1,3)
             wrCmdSplit.bank := wrCmdAddr(BG_WIDTH+COL_WIDTH+BANK_WIDTH-1,BG_WIDTH+COL_WIDTH)
         }
+
+    val rdDataBuffWithArb = Module(new BufferWithArb)
+    rdDataBuffWithArb.io.inAS <> io.RdDataFromAS
+    rdDataBuffWithArb.io.inCache <> io.RdDataFromCache
+    io.RdData2Filter <> rdDataBuffWithArb.io.out
         rdCmdSplit.pri := io.RdCmdFromFilter.bits.pri
         rdCmdSplit.token := io.RdCmdFromFilter.bits.token
         wrCmdSplit.pri := io.WrReqFromFilter.bits.cmd.pri
         wrCmdSplit.token := io.WrReqFromFilter.bits.cmd.token
     io.RdCmdFromFilter.ready := Mux(io.RdIsToAS,io.RdCmd2AS.ready,io.RdCmd2Cache.ready)
-    io.WrReqFromFilter.ready := Mux(io.WrIsToAS, io.WrCmd2AS.ready && io.WrData2AS.ready, io.WrCmd2Cache.ready && io.WrData2Cache.ready)
+    io.WrReqFromFilter.ready := Mux(io.WrIsToAS ,io.WrData2AS.ready,io.WrData2Cache.ready)
     io.RdCmd2AS.valid := rdIsToAS & io.RdCmdFromFilter.valid
     io.RdCmd2AS.bits :=   rdCmdSplit.asTypeOf(chiselTypeOf(io.RdCmd2AS.bits))
     io.RdCmd2Cache.valid := (~rdIsToAS) & io.RdCmdFromFilter.valid
     io.RdCmd2Cache.bits :=rdCmdSplit.asTypeOf(chiselTypeOf(io.RdCmd2Cache.bits))
     io.WrCmd2AS.valid := wrIsToAS & io.WrReqFromFilter.valid 
     io.WrCmd2AS.bits :=wrCmdSplit.asTypeOf(chiselTypeOf(io.WrCmd2AS.bits))
-    io.WrCmd2Cache.valid := !wrIsToAS & io.WrReqFromFilter.valid  
+    io.WrCmd2Cache.valid := !wrIsToAS & io.WrReqFromFilter.valid       
     io.WrCmd2Cache.bits := wrCmdSplit.asTypeOf(chiselTypeOf(io.WrCmd2Cache.bits))                  
-    io.WrData2AS.valid := wrIsToAS & io.WrReqFromFilter.valid
+    io.WrData2AS.valid := wrIsToAS & io.WrReqFromFilter.valid 
     io.WrData2AS.bits := io.WrReqFromFilter.bits.data
-    io.WrData2Cache.valid := !wrIsToAS & io.WrReqFromFilter.valid
+    io.WrData2Cache.valid := !wrIsToAS & io.WrReqFromFilter.valid 
     io.WrData2Cache.bits := io.WrReqFromFilter.bits.data
     
 }

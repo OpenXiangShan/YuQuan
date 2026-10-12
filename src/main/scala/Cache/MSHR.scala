@@ -35,7 +35,7 @@ class MSHR_by (mshr_depth : Int = 64) extends Module with CacheConst {
        val asReq = Decoupled(new SplitCmdIO(token_width))
         
         // data from as 
-        val dataFromAS = Flipped(Decoupled(new RdDataIO(token_width)))
+        val dataFromAS = Flipped(Decoupled(new DataIO(token_width)))
 
         // req to refill pipeline 
         val rpReq = Decoupled(new MSHRInfo {val rdata = UInt(BUNDLE_PARAM.DATA_WIDTH.W)})
@@ -80,11 +80,11 @@ class MSHR_by (mshr_depth : Int = 64) extends Module with CacheConst {
 
     //val tmpCmd = RegEnable(io.mpReq.bits, io.mpReq.fire) 
     val popCmdQueue = Module(new Queue(chiselTypeOf(io.mpReq.bits.splitCmd), mshr_depth))//chiselTypeOf是创建io.mpReq.bits.splitCmd这样的类型，但是生成的对象是没有硬连线的
-    val mshrID = io.dataFromAS.bits.rtoken(token_width-1, BUNDLE_PARAM.TOKEN_WIDTH)
+    val mshrID = io.dataFromAS.bits.token(token_width-1, BUNDLE_PARAM.TOKEN_WIDTH)
     val refillIdx = RegEnable(mshrID, io.dataFromAS.fire) 
    
     val tmpRetCmd = RegEnable(MSHRCmdRAM.io.r.resp.data(0), io.dataFromAS.fire)
-    val bypassRetData = RegNext(io.dataFromAS.bits.rdata)
+    val bypassRetData = RegNext(io.dataFromAS.bits.data)
     val bypassDataRAM = RegNext(io.dataFromAS.fire)
 
     // apply bits 
@@ -102,7 +102,7 @@ class MSHR_by (mshr_depth : Int = 64) extends Module with CacheConst {
     MSHRDataRAM.io.w.req.valid := io.dataFromAS.fire
     MSHRDataRAM.io.w.req.bits.apply(
         setIdx = mshrID,
-        data =  io.dataFromAS.bits.rdata,
+        data =  io.dataFromAS.bits.data,
         waymask = 1.U
     )
 

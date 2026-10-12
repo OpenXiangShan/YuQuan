@@ -19,7 +19,7 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
 import java.util.ResourceBundle
-import org.apache.commons.compress.harmony.unpack200.bytecode.forms.SwitchForm
+
 
 class addrQueue(entnum : Int)extends Module{
     val addrWidth = log2Ceil(entnum) //向上取整
