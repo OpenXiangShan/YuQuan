@@ -27,6 +27,7 @@ class SchedulerSCGCmd(tokLen:Int) extends SplitCmdIO(tokLen) {
 class Scheduler(WrentNum:Int = BUNDLE_PARAM.WrSchedulerQueueDepth , RdentNum:Int = BUNDLE_PARAM.RdSchedulerQueueDepth, fTokLen:Int = 7, cTokLen:Int = 13 , WfTokLen:Int = 9, WcTokLen:Int = 15) extends Module with OSMCParameter {
   val bgNum  = math.pow(2, BG_WIDTH+RANK_WIDTH).toInt
   val baPerBg  = math.pow(2, BANK_WIDTH).toInt
+  val allBankNum = bgNum * baPerBg
   val tokMax  = math.max(fTokLen, cTokLen)
   val org = StationOrg.PerBg
 
@@ -41,14 +42,14 @@ class Scheduler(WrentNum:Int = BUNDLE_PARAM.WrSchedulerQueueDepth , RdentNum:Int
       })
     val cmdOut   = Vec(bgNum * baPerBg, Decoupled(new SchedulerSCGCmd(tokMax + 1)))
     val SchedulerQueueIsEmpty = Bool()
-    val readBack = new ReadBackIO(new RbParam(cTokenLen = cTokLen, fTokenLen = fTokLen))
+    val scgOpenRowState = Flipped(Vec(allBankNum, Valid(UInt(BUNDLE_PARAM.ROW_WIDTH.W))))
+    val pendingSameRowHit = Output(Vec(allBankNum, Bool()))
   })
   val inAdapter = Module(new CmdDispatcher(fTokLen, cTokLen,WfTokLen, WcTokLen)).io
   val confCtrl  = Seq.fill(bgNum)(Module(new ConflictCtrl(gen = inAdapter.Cmd2Conf(0).bits.cloneType))).map(_.io)
   val rdSt = Seq.fill(bgNum)(Module(new CmdStation(entNum = RdentNum, gen = new SplitCmdIO(confCtrl(0).cmdOut.bits.token.getWidth){val isRd = Bool()}, org, 3, 14))).map(_.io)
   val wrSt = Seq.fill(bgNum)(Module(new CmdStation(entNum = WrentNum, gen = confCtrl(0).cmdOut.bits.cloneType, org, 2, WrentNum))).map(_.io)
   val rwSwitch = Module(new RWSwitch(org)).io
-  val readBack = Module(new ReadBack(new RbParam)).io
 //------------------------------------------------------------
 // Connect Submodules' Input
 //------------------------------------------------------------
@@ -74,6 +75,14 @@ class Scheduler(WrentNum:Int = BUNDLE_PARAM.WrSchedulerQueueDepth , RdentNum:Int
     wrSt(i).cmdIn.valid := confCtrl(i).cmdOut.valid && !confCtrl(i).cmdOut.bits.isRd
 
     confCtrl(i).cmdOut.ready := Mux(confCtrl(i).cmdOut.bits.isRd, rdSt(i).cmdIn.ready, wrSt(i).cmdIn.ready)
+    for (j <- 0 until baPerBg) {
+      val bankIdx = i * baPerBg + j
+      rdSt(i).openRowProbe(j).valid := io.scgOpenRowState(bankIdx).valid
+      rdSt(i).openRowProbe(j).bits := io.scgOpenRowState(bankIdx).bits
+      wrSt(i).openRowProbe(j).valid := io.scgOpenRowState(bankIdx).valid
+      wrSt(i).openRowProbe(j).bits := io.scgOpenRowState(bankIdx).bits
+      io.pendingSameRowHit(bankIdx) := rdSt(i).pendingSameRowHit(j) || wrSt(i).pendingSameRowHit(j)
+    }
   }
   rdSt.foreach(_.grant := rwSwitch.grantRead)
   wrSt.foreach(_.grant := rwSwitch.grantWrite)
@@ -87,7 +96,7 @@ class Scheduler(WrentNum:Int = BUNDLE_PARAM.WrSchedulerQueueDepth , RdentNum:Int
 //------------------------------------------------------------
 // ReadBack Connection
 //------------------------------------------------------------
-  io.readBack :<>= readBack
+  // io.readBack :<>= readBack
 //------------------------------------------------------------
 // Output Connection
 //------------------------------------------------------------
@@ -121,7 +130,7 @@ for(i <- 0 until bgNum){
 for(i <- 0 until bgNum){
   WriteVec(i) := wrSt(i).VldentryNum.orR
 }
-io.SchedulerQueueIsEmpty := !(ReadVec.asUInt.orR) | !(WriteVec.asUInt.orR) 
+io.SchedulerQueueIsEmpty := !(ReadVec.asUInt.orR) & !(WriteVec.asUInt.orR) 
 dontTouch(io.SchedulerQueueIsEmpty)
 
 }

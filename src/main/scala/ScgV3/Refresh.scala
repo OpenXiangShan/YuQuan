@@ -38,6 +38,7 @@ trait RefreshMode{
     def autoRefresh = 0.U
     def postponedRefresh = 1.U
     def speculativeRefresh = 2.U
+    def elasticRefresh = 3.U
 }
 
 class Refresh extends Module with RefreshMode{
@@ -76,7 +77,8 @@ class Refresh extends Module with RefreshMode{
     val tREFI_TIMER_mux     = MuxCase(tREFI_TIMER_default -1.U,Seq(
         (io.timeParam.RefreshMode === autoRefresh,tREFI_TIMER_default -1.U),
         (io.timeParam.RefreshMode === postponedRefresh,(tREFI_TIMER_default*8.U) -1.U ),
-        (io.timeParam.RefreshMode === speculativeRefresh,((tREFI_TIMER_default)-1.U))
+        (io.timeParam.RefreshMode === speculativeRefresh,((tREFI_TIMER_default)-1.U)),
+        (io.timeParam.RefreshMode === elasticRefresh,tREFI_TIMER_default -1.U)
     ))
 
     val tREFI_timer = RegInit(0.U(BUNDLE_PARAM.McParamWidth.W))
@@ -111,12 +113,82 @@ class Refresh extends Module with RefreshMode{
     val busrt_refresh_count = RegInit(0.U(5.W))
     busrt_refresh_count := busrt_refresh_count //default 
 
+    //elastic refresh
+    val elastic_tREFI_count = RegInit(0.U(4.W))
+    elastic_tREFI_count := MuxCase(elastic_tREFI_count,Seq(  //default 
+        (io.timeParam.RefreshMode =/= elasticRefresh, 0.U),
+        ((io.CalDone && elastic_tREFI_count === 8.U), 0.U),
+        ((io.CalDone && tREFI_timer === 0.U),         elastic_tREFI_count + 1.U )        
+    ))
+    
+    val elastic_idle_cycles = RegInit(0.U(16.W))
+    elastic_idle_cycles    := MuxCase(elastic_idle_cycles, Seq(
+        (!io.SchedulerQueueIsEmpty, 0.U),
+        (elastic_idle_cycles >= (8.U*((io.timeParam.tRFC*BUNDLE_PARAM.MC_CLK.U)/1000.U)),(8.U*((io.timeParam.tRFC*BUNDLE_PARAM.MC_CLK.U)/1000.U))(15,0)  ),
+        ((io.CalDone && io.SchedulerQueueIsEmpty), ((elastic_idle_cycles) + 1.U))
+    ))
+
+    val elastic_max_idle_Cycle = RegInit(VecInit(Seq.fill(8)(0.U(16.W))))
+
+    when ((elastic_idle_cycles.orR) && (!io.SchedulerQueueIsEmpty)){//每个空闲周期结束后统计
+        val insert_pos = WireDefault(8.U)
+        for (i <- 7 to 0 by -1) {//找到当下空闲时钟周期应该插入的位置(i从0到7)
+            when (elastic_max_idle_Cycle(i) <= elastic_idle_cycles) {
+                insert_pos := i.U
+            }
+        }
+        elastic_max_idle_Cycle(0) := Mux(insert_pos === 0.U, elastic_idle_cycles,elastic_max_idle_Cycle(0))
+        for (i <- 1 until 8) {//空闲时钟周期数加到max_idle_Cycle数组里
+            when (insert_pos <= i.U) {
+                elastic_max_idle_Cycle(i) := Mux(insert_pos === i.U, 
+                    elastic_idle_cycles, 
+                    elastic_max_idle_Cycle(i-1))
+            }
+        }
+        // 2. 移位插入
+        // when (insert_pos =/= 8.U) {
+        //     for (i <- 7 until insert_pos.toInt by -1) {
+        //         elastic_max_idle_Cycle(i) := elastic_max_idle_Cycle(i-1)
+        //     }
+        //     elastic_max_idle_Cycle(insert_pos) := elastic_idle_cycles
+        // }
+    }
+
+    val elastic_max_delay_control = RegInit(0.U(16.W))
+    when ( elastic_tREFI_count === 8.U){//每隔  tREFI*8 个空闲周期统计一次最大阈值 （第8大的空闲周期）
+        val elastic_count = WireDefault(8.U)
+        for (i <- 0 until 8) {//找到数组里最小的非零值（一般是8）
+            when (elastic_max_idle_Cycle(i).orR) {
+                elastic_count := i.U
+            }
+        }
+        elastic_max_delay_control := Mux( (elastic_max_idle_Cycle(elastic_count)>>1) > (io.timeParam.tRP + ((io.timeParam.tRFC*BUNDLE_PARAM.MC_CLK.U)/1000.U)), 
+                    (io.timeParam.tRP + ((io.timeParam.tRFC*BUNDLE_PARAM.MC_CLK.U)/1000.U)), 
+                    (elastic_max_idle_Cycle(elastic_count)>>1) )
+        // 然后清零（优先级最高，会覆盖其他赋值）
+        for (i <- 0 until 8) {
+            elastic_max_idle_Cycle(i) := 0.U
+        }
+    }.elsewhen(!io.CalDone) {
+        elastic_max_delay_control := (io.timeParam.tRP + ((io.timeParam.tRFC*BUNDLE_PARAM.MC_CLK.U)/1000.U))
+    }.otherwise {
+        elastic_max_delay_control := elastic_max_delay_control  // 保持
+    }
+
+    val elastic_idle_cycles_threshoold = RegInit(0.U(16.W))  //计算空闲周期阈值
+    elastic_idle_cycles_threshoold := MuxCase(elastic_max_delay_control, Seq(
+        (refPend >= 7.U, 1.U),
+        (refPend > 2.U , ((elastic_max_delay_control / 5.U) * (7.U-refPend))  ),
+        (refPend <= 2.U, elastic_max_delay_control)
+    ))
+
     // ref pend
     when (state === REF_FSM.REFISS) {
         refPend := Mux(refPend > 0.U ,refPend - 1.U,refPend)
     }.elsewhen(io.CalDone && tREFI_timer === 0.U) {
         refPend := refPend + 1.U 
-        busrt_refresh_count := Mux(io.timeParam.RefreshMode === autoRefresh ,0.U ,8.U)
+        busrt_refresh_count := Mux(io.timeParam.RefreshMode === postponedRefresh ,8.U ,0.U)
+
     }
 
     // zq pend
@@ -130,7 +202,8 @@ class Refresh extends Module with RefreshMode{
     refCond := MuxCase(false.B,Seq(
         (io.timeParam.RefreshMode === autoRefresh,refPend.orR),
         (io.timeParam.RefreshMode === postponedRefresh,refPend.orR),
-        (io.timeParam.RefreshMode === speculativeRefresh,(refPend.orR & io.SchedulerQueueIsEmpty) | refPend === 8.U)
+        (io.timeParam.RefreshMode === speculativeRefresh,(refPend.orR & io.SchedulerQueueIsEmpty) | refPend === 8.U),
+        (io.timeParam.RefreshMode === elasticRefresh,(refPend.orR & (elastic_idle_cycles >= elastic_idle_cycles_threshoold) & io.SchedulerQueueIsEmpty) | refPend === 8.U)
     ))
     switch (state) {
         is (REF_FSM.IDLE) {
@@ -176,7 +249,7 @@ class Refresh extends Module with RefreshMode{
 
         is (REF_FSM.tRFC_WAIT) {
            when (tRFC_timer === 0.U) {
-                when(Mux(io.timeParam.RefreshMode ===autoRefresh | io.timeParam.RefreshMode === postponedRefresh ,busrt_refresh_count === 0.U,refPend === 0.U)){
+                when(Mux(io.timeParam.RefreshMode === postponedRefresh ,busrt_refresh_count === 0.U,refPend === 0.U)){
                     when (zqPend) {
                         state := REF_FSM.ZQISS
                     }.otherwise {

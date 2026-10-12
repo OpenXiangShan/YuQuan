@@ -75,4 +75,12 @@ class RWSwitch(org:StationOrg.Value) extends Module {
     // Reg out
     io.grantRead := RegNext(rGrant, true.B)
     io.grantWrite := RegNext(!rGrant, false.B)
+    //读写切换次数统计
+    val edge = rGrant =/= RegNext(rGrant)
+    val SwitchCounter = RegInit(0.U(32.W))
+    when(edge){
+        SwitchCounter := SwitchCounter + 1.U
+    }
+    dontTouch(SwitchCounter)
+    dontTouch(edge)
 }

@@ -52,7 +52,7 @@ class CmdArbiter[T <: SchedulerSCGCmd](depth: Int = 2, gen: T) extends Module {
 
   val fifo      = Module(new Queue(gen, depth, useSyncReadMem = true, pipe = true))
 
-
+  // TODO: rewrite arb
   // update prefers
 // Sequential Logic
   fcPrefer := MuxCase(fcPrefer, Seq(
@@ -94,7 +94,7 @@ class CmdArbiter[T <: SchedulerSCGCmd](depth: Int = 2, gen: T) extends Module {
 // Combinatorial logic
 // Enqueue selected command to FIFO
   val chosen = WireInit(OHToUInt(io.cmdIn.map(_.valid)))
-  fifo.io.enq.valid := io.cmdIn(chosen).valid 
+  fifo.io.enq.valid := io.cmdIn(chosen).valid // io.cmdIn.map(_.valid).reduce(_ | _)
   fifo.io.enq.bits := io.cmdIn(chosen).bits
   // arbitrate between command inputs
   io.cmdIn.foreach(_.ready := false.B)
