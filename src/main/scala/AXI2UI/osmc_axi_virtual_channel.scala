@@ -26,58 +26,47 @@ class osmc_axi_virtual_channel extends Module {
   val RobEntryNum = ROB_PARAM.RobEntryNum
   val VirtualChannelNum = ROB_PARAM.VirtualChannelNum
   val PerRobEntryCmdNum = RobEntryNum / VirtualChannelNum
-  val childTokenWidth = log2Ceil(PerRobEntryCmdNum)
-  val vidWidth = math.max(1, log2Ceil(VirtualChannelNum))
   val io = IO(new Bundle {
     val SplitCommandQueue = Flipped(Decoupled(new SplitCommandQueueBundle(AXI_PARAM.AXI_IDW) ))//command input 
     val UiCommand         = DecoupledIO(new CMDIO())//ui command output
     val RobDeq            = DecoupledIO(Vec(2,new ReadQueueBundle(1)))//rob UiData deq
-    val ui_rio            = Flipped(new ui_rdadtaIO())
+    val ui_rio            = Flipped(DecoupledIO(new RdDataIO(BUNDLE_PARAM.TOKEN_WIDTH)))
   })
+dontTouch(io)
   val CmdDispatcher       = Module(new osmc_cmd_dispatcher(VirtualChannelNum, PerRobEntryCmdNum))
   val ChildRob            = Seq.fill(VirtualChannelNum)(Module(new osmc_axi_read_rob(PerRobEntryCmdNum)))
-  val DataArbiter         = Module(new RRArbiter(new RdDataIO(), 2))
-  val RobArbiter          = Module(new RRArbiter(Vec(2,new ReadQueueBundle(1)), VirtualChannelNum))
+  val DataArbiter         = Module(new RoundRobinArbiter(VirtualChannelNum))
 
 /************************************************************************************/
   //connect SplitCommandQueue to CmdDispatcher
   io.SplitCommandQueue              <> CmdDispatcher.io.axi_command_enq
   //connect CmdDispatcher to UiCommand
   CmdDispatcher.io.axi_command_deq  <> io.UiCommand
-  
-  DataArbiter.io.in(0).valid := io.ui_rio.dataFormScg.valid
-  DataArbiter.io.in(0).bits  := io.ui_rio.dataFormScg.bits
-  io.ui_rio.dataFormScg.ready := DataArbiter.io.in(0).ready
-  DataArbiter.io.in(1).valid := io.ui_rio.dataFromCache.valid
-  DataArbiter.io.in(1).bits  := io.ui_rio.dataFromCache.bits
-  io.ui_rio.dataFromCache.ready := DataArbiter.io.in(1).ready
 
-  val  VID = Wire(UInt(vidWidth.W))
+  val  VID = RegInit(0.U(BUNDLE_PARAM.TOKEN_WIDTH.W))
   if (VirtualChannelNum == 1){
     VID := 0.U
   }else if (VirtualChannelNum == 2){
-    VID := DataArbiter.io.out.bits.rtoken(BUNDLE_PARAM.TOKEN_WIDTH -1)
+    VID := io.ui_rio.bits.rtoken(BUNDLE_PARAM.TOKEN_WIDTH -1)
   }else{
-    VID := DataArbiter.io.out.bits.rtoken(BUNDLE_PARAM.TOKEN_WIDTH -1, BUNDLE_PARAM.TOKEN_WIDTH -log2Ceil(VirtualChannelNum))
+    VID := io.ui_rio.bits.rtoken(BUNDLE_PARAM.TOKEN_WIDTH -1, BUNDLE_PARAM.TOKEN_WIDTH -log2Ceil(VirtualChannelNum))
   }
-  val selectedRobDataReady = if (VirtualChannelNum == 1) {
-    ChildRob(0).io.ui_rio.ready
-  } else {
-    Mux1H((0 until VirtualChannelNum).map(i => (VID === i.U) -> ChildRob(i).io.ui_rio.ready))
-  }
-  DataArbiter.io.out.ready := selectedRobDataReady
   for(i <- 0 until VirtualChannelNum){
     /************************************************************************************/
-        ChildRob(i).io.ui_rio.bits.rdata        := DataArbiter.io.out.bits.rdata
-        ChildRob(i).io.ui_rio.valid             := DataArbiter.io.out.valid & i.U === VID
-        ChildRob(i).io.ui_rio.bits.rtoken       := DataArbiter.io.out.bits.rtoken(childTokenWidth-1,0)
+        ChildRob(i).io.ui_rio.bits.rdata        := io.ui_rio.bits.rdata
+        ChildRob(i).io.ui_rio.valid             := io.ui_rio.valid & i.U === VID
+        ChildRob(i).io.ui_rio.bits.rtoken       := io.ui_rio.bits.rtoken(log2Ceil(PerRobEntryCmdNum)-1,0)
         ChildRob(i).io.TokenQueueEnq            <> CmdDispatcher.io.Vid2Rob(i)
     /************************************************************************************/
-        RobArbiter.io.in(i)                     <> ChildRob(i).io.RobDeq
+        DataArbiter.io.requests(i)              := ChildRob(i).io.RobDeq.valid & io.RobDeq.ready 
+        ChildRob(i).io.RobDeq.ready             := DataArbiter.io.chosen === i.U & io.RobDeq.ready
+        ChildRob(i).io.ui_rio.bits              := io.ui_rio.bits
+        ChildRob(i).io.ui_rio.valid             := io.ui_rio.valid & i.U === VID 
+        io.ui_rio.ready                         := true.B
   }
-  io.RobDeq.bits                                := RobArbiter.io.out.bits
-  io.RobDeq.valid                               := RobArbiter.io.out.valid
-  RobArbiter.io.out.ready                       := io.RobDeq.ready
+  io.RobDeq.bits                                := MuxCase(0.U.asTypeOf(io.RobDeq.bits),(0 until VirtualChannelNum).map{i => (DataArbiter.io.chosen === i.U) -> ChildRob(i).io.RobDeq.bits})
+  io.RobDeq.valid                               := DataArbiter.io.valid
+  DataArbiter.io.accept                         := io.RobDeq.fire
 
 
 

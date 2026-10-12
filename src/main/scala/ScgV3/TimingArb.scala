@@ -57,7 +57,6 @@ class TimingDFIPhase extends Bundle {
 class TimingArb extends Module{
     val allBankNum = 1 << (BGBITS + BABITS + RANK_WIDTH)
     val bgNum = 1 << BGBITS
-    val rankBgNum = 1 << (RANK_WIDTH + BGBITS)
 
     val io = IO (new Bundle {
         val cmdGen     = Vec(allBankNum, Flipped(new CmdGenArb))
@@ -77,7 +76,7 @@ class TimingArb extends Module{
     val ccdlTimer = RegInit(0.U(BUNDLE_PARAM.McParamWidth.W))
     val ccdsTimer = RegInit(0.U(BUNDLE_PARAM.McParamWidth.W))
 
-    val wtrlTimer = RegInit(VecInit.fill(rankBgNum)(0.U(BUNDLE_PARAM.McParamWidth.W)))
+    val wtrlTimer = RegInit(0.U(BUNDLE_PARAM.McParamWidth.W))
     val wtrsTimer = RegInit(0.U(BUNDLE_PARAM.McParamWidth.W))
 
     val rtwTimer = RegInit(0.U(BUNDLE_PARAM.McParamWidth.W))
@@ -150,9 +149,18 @@ class TimingArb extends Module{
     ))
     PreviousCas.rank := Mux(io.phaseCtrl.casReq ,io.phaseCtrl.casRank , PreviousCas.rank)
     PreviousCas.bg   := Mux(io.phaseCtrl.casReq ,io.phaseCtrl.casBg   , PreviousCas.bg  ) 
+    //transcribe last write rank and bg
+    val PreviousWrite = RegInit(new Bundle{
+        val rank = UInt(BUNDLE_PARAM.RANK_WIDTH.W)
+        val bg   = UInt(BUNDLE_PARAM.BG_WIDTH.W)
+    }.Lit(
+        _.rank -> 0.U ,
+        _.bg   -> 0.U 
+    ))
+    PreviousWrite.rank := Mux(io.phaseCtrl.casReq & (!io.phaseCtrl.casRead)  ,io.phaseCtrl.casRank , PreviousWrite.rank)
+    PreviousWrite.bg   := Mux(io.phaseCtrl.casReq & (!io.phaseCtrl.casRead)  ,io.phaseCtrl.casBg   , PreviousWrite.bg)
     //timing check
     def checkAct(idx: Int, sameBG : Bool , rank : Int): Bool = {
-        // rrdsTimer(bg) === 0.U && rrdlTimer(bg) === 0.U && rpTimer(idx) === 0.U && fawOK
         Mux(sameBG,rrdlTimer === 0.U ,rrdsTimer === 0.U)&& rpTimer(idx) === 0.U && Mux(rank.U === 1.U ,fawOK_rank1,fawOK_rank0 )
     }
 
@@ -160,10 +168,9 @@ class TimingArb extends Module{
         rtpTimer(idx) === 0.U && rasTimer(idx) === 0.U && wrTimer(idx) === 0.U
     }
 
-    def checkCas(idx: Int, rankBg: Int, sameRank: Bool, sameBG: Bool, read: Bool): Bool = {
-        val wtrOK = wtrlTimer(rankBg) === 0.U & wtrsTimer === 0.U
-        rcdTimer(idx) === 0.U & Mux(sameRank , Mux(sameBG , ccdlTimer === 0.U , ccdsTimer === 0.U ) & Mux(read , wtrOK, rtwTimer === 0.U ),
-                                               Mux(read,rtrDiffRankTimer === 0.U & wtrDiffRankTimer === 0.U & wtrOK , wtwDiffRankTimer === 0.U & rtwDiffRankTimer === 0.U & rtwTimer === 0.U))
+    def checkCas(idx: Int, sameRank: Bool ,sameBG: Bool , WRsameBG : Bool, read:Bool): Bool = {
+        rcdTimer(idx) === 0.U & Mux(sameRank , Mux(sameBG , ccdlTimer === 0.U , ccdsTimer === 0.U ) & Mux(read , Mux(WRsameBG,wtrlTimer === 0.U , wtrsTimer === 0.U), rtwTimer === 0.U ),
+                                               Mux(read,rtrDiffRankTimer === 0.U & wtrDiffRankTimer === 0.U & wtrlTimer === 0.U , wtwDiffRankTimer === 0.U & rtwDiffRankTimer === 0.U & rtwTimer === 0.U))
     }
 
     io.cmdGen.zipWithIndex.foreach {
@@ -171,10 +178,9 @@ class TimingArb extends Module{
             val bg = (i >> BABITS) & ((1 << BGBITS) - 1)
             val ba = i & ((1 << BABITS) - 1)
             val rank = i >>(BABITS + BGBITS)
-            val rankBg = i >> BABITS
             actArb.io.requests(i) := cmd.actReq & checkAct(i, bg.U === PreviousAct.bg & rank.U === PreviousAct.rank,rank)
             preArb.io.requests(i) := cmd.preReq & checkPre(i, bg, ba)
-            casArb.io.requests(i) := cmd.casReq & checkCas(i, rankBg, rank.U === PreviousCas.rank, bg.U === PreviousCas.bg, cmd.casRead)
+            casArb.io.requests(i) := cmd.casReq & checkCas(i, rank.U === PreviousCas.rank, bg.U === PreviousCas.bg, bg.U === PreviousWrite.bg, cmd.casRead) 
         } 
     }
 
@@ -183,8 +189,6 @@ class TimingArb extends Module{
 // ======================================================================================
     val cmdGens = WireInit(io.cmdGen)
     val actReqR = RegNext(hasAct)
-    // val actBgR  = RegNext(actChosen(BGBITS - 1, 0))
-    // val actBaR  = RegNext(actChosen(BABITS + BGBITS - 1, BGBITS))
     val actRank = RegNext(actChosen(RANK_WIDTH + BGBITS + BABITS - 1 ,BGBITS + BABITS))
     val actBgR  = RegNext(actChosen(BABITS + BGBITS - 1, BABITS))
     val actBaR  = RegNext(actChosen(BABITS -1 , 0))
@@ -337,9 +341,7 @@ class TimingArb extends Module{
     rrdsTimer := Mux(rrdsTimer === 0.U , 0.U ,rrdsTimer - 1.U)
     ccdlTimer := Mux(ccdlTimer === 0.U , 0.U ,ccdlTimer - 1.U)
     ccdsTimer := Mux(ccdsTimer === 0.U , 0.U ,ccdsTimer - 1.U)
-    wtrlTimer.foreach { timer =>
-        timer := Mux(timer === 0.U, 0.U, timer - 1.U)
-    }
+    wtrlTimer := Mux(wtrlTimer === 0.U , 0.U ,wtrlTimer - 1.U)
     wtrsTimer := Mux(wtrsTimer === 0.U , 0.U ,wtrsTimer - 1.U)
     rtwTimer := Mux(rtwTimer === 0.U, 0.U, rtwTimer - 1.U)
 
@@ -378,7 +380,6 @@ class TimingArb extends Module{
     // if has others, pre always in slot1
     // if has act, cas in slot1, otherwise in slot0
     val casBg = casChosen(BGBITS + BABITS - 1, BABITS)
-    val casRankBg = casChosen(RANK_WIDTH + BGBITS + BABITS - 1, BABITS)
     val casRead = io.cmdGen(casChosen).casRead
 
 
@@ -396,7 +397,7 @@ class TimingArb extends Module{
                 rtwDiffRankTimer := tRTWDIFFRANK0
             }.otherwise { // 
                 wrTimer(casChosen) := tWR0
-                wtrlTimer(casRankBg) := tWTRL0
+                wtrlTimer := tWTRL0
                 wtrsTimer := tWTRS0
                 wtpaTimer := tWTP0
                 wtrDiffRankTimer := tWTRDIFFRANK0
@@ -419,7 +420,7 @@ class TimingArb extends Module{
                 rtwDiffRankTimer := tRTWDIFFRANK0
             }.otherwise { // 
                 wrTimer(casChosen) := tWR0
-                wtrlTimer(casRankBg) := tWTRL0
+                wtrlTimer   := tWTRL0
                 wtrsTimer   := tWTRS0
                 wtpaTimer := tWTP0
                 wtrDiffRankTimer := tWTRDIFFRANK0
@@ -454,7 +455,7 @@ class TimingArb extends Module{
                 rtwDiffRankTimer := tRTWDIFFRANK1
             }.otherwise { // 
                 wrTimer(casChosen) := tWR1
-                wtrlTimer(casRankBg) := tWTRL1
+                wtrlTimer          := tWTRL1
                 wtrsTimer          := tWTRS1
                 wtpaTimer := tWTP1
                 wtrDiffRankTimer := tWTRDIFFRANK1

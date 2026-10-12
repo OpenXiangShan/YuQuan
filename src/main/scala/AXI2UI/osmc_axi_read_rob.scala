@@ -19,7 +19,6 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
 import java.util.ResourceBundle
-//import scala.annotation.newMain
 import javax.xml.catalog.Catalog
 import org.json4s.native.JsonParser.Token
 class TokenEnqBundle extends SplitCommandQueueBundle(AXI_PARAM.AXI_IDW){
@@ -36,11 +35,11 @@ val io = IO(new Bundle{
     val ui_rio              = Flipped(DecoupledIO(new RdDataIO(log2Ceil(PerRobEntryNum))))
 })
 val TokenQueue              = Module(new Queue(new TokenEnqBundle,PerRobEntryNum))
-val UiDataMem               = Mem(1<<TOKEN_WIDTH,UInt(UI_DW.W))//128 entrys 
+val UiDataMem               = SyncReadMem(1<<TOKEN_WIDTH,UInt(UI_DW.W))//128 entrys 
 val ValidBitMap             = RegInit(VecInit.fill(1<<TOKEN_WIDTH)(false.B))
-val ReadData                = UiDataMem(TokenQueue.io.deq.bits.token)
+val ReadData                = UiDataMem.do_read((TokenQueue.io.deq.bits.token),ValidBitMap(TokenQueue.io.deq.bits.token)& io.RobDeq.ready)
     TokenQueue.io.enq                 <> io.TokenQueueEnq
-    UiDataMem(io.ui_rio.bits.rtoken)  := Mux(io.ui_rio.valid,io.ui_rio.bits.rdata,UiDataMem(io.ui_rio.bits.rtoken)) 
+    UiDataMem.do_readWrite(io.ui_rio.bits.rtoken, io.ui_rio.bits.rdata, io.ui_rio.valid , true.B)
     io.RobDeq.bits(0).data            := ReadData((UI_DW >> 1) - 1,0).asTypeOf(io.RobDeq.bits(0).data)
     io.RobDeq.bits(1).data            := ReadData(UI_DW - 1,UI_DW >> 1).asTypeOf(io.RobDeq.bits(1).data)
     io.RobDeq.bits(0).id              := TokenQueue.io.deq.bits.id.asTypeOf(io.RobDeq.bits(0).id)
@@ -51,8 +50,8 @@ val ReadData                = UiDataMem(TokenQueue.io.deq.bits.token)
     io.RobDeq.bits(1).size            := TokenQueue.io.deq.bits.size.asTypeOf(io.RobDeq.bits(1).size)
     io.RobDeq.bits(0).last            := false.B.asTypeOf(io.RobDeq.bits(0).last)//这里只适用于burst len == 1,待适配更多
     io.RobDeq.bits(1).last            := true.B.asTypeOf(io.RobDeq.bits(1).last)
-    io.RobDeq.valid                   := Mux(TokenQueue.io.deq.valid,ValidBitMap(TokenQueue.io.deq.bits.token)  ,false.B )
-    TokenQueue.io.deq.ready           := ValidBitMap(TokenQueue.io.deq.bits.token) & io.RobDeq.ready
+    io.RobDeq.valid                   := RegNext(Mux(TokenQueue.io.deq.valid,ValidBitMap(TokenQueue.io.deq.bits.token) & io.RobDeq.ready ,false.B ))
+    TokenQueue.io.deq.ready           := RegNext(ValidBitMap(TokenQueue.io.deq.bits.token) & io.RobDeq.ready) 
     io.ui_rio.ready                   := true.B
 
 switch(Cat(io.ui_rio.fire, ValidBitMap(TokenQueue.io.deq.bits.token)&TokenQueue.io.deq.valid & io.RobDeq.ready )){

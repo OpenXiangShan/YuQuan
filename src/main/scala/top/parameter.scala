@@ -46,14 +46,14 @@ case class BUNDLE_PARAMETER(
     STRBBITS     :   Int = 32 , //STRB_WIDTH
     CKEBITS     :   Int = 1  ,
     ODTBITS     :   Int = 1  ,
-    TOKENBITS   :   Int = 14 , //scg token width 7 + 6(cache mshr) + 1(cache flag)
+    TOKENBITS   :   Int = 14 , //scg token width
     RdDataEnWidth : Int = 16 , 
     RdDataCsNWidth: Int = 32 ,
     RdDataVldWidth: Int = 16 , 
     RdDataDbiWidth: Int = 32 ,
     WrDataEnWidth : Int = 16 , 
     WrDataCsNWidth: Int = 32 ,
-    // CMDBITS       : Int = 3  ,
+    CMDBITS       : Int = 3  ,
     
 
     ResetNWidth   : Int = 1    ,
@@ -81,7 +81,8 @@ case class BUNDLE_PARAMETER(
     tphy_rdlat    : Int =  4   ,
     Wlmax         : Int =  20  ,
 
-    MC_CLK         : Int  = 800 //MHZ
+    BANK_NUM       : Int  = 4  ,
+    MC_CLK         : Int  = 600 //MHZ
 
 
 )
@@ -90,6 +91,6 @@ object BUNDLE_PARAM extends BUNDLE_PARAMETER
 
 case class ROB_PARAMETER(
   RobEntryNum  : Int = 128 ,
-  VirtualChannelNum : Int = 16  
+  VirtualChannelNum : Int = 1  
 )
 object  ROB_PARAM extends ROB_PARAMETER

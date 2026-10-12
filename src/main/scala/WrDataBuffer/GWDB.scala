@@ -17,10 +17,8 @@ package OpenMc
 import chisel3._
 import chisel3.util._
 import chisel3.experimental.FlatIO
-import java.util.ResourceBundle
 import APB._
 import OpenMc.BUNDLE_PARAM
-import os.truncate
 
 class DeqtoDFIIO (Token_Width : Int)extends Bundle{
             val wdata   = UInt(BUNDLE_PARAM.DATA_WIDTH.W)
