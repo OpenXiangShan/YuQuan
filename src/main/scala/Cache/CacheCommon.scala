@@ -57,16 +57,16 @@ class MSHRInfo extends CacheBundle{
 
 trait CacheConst {
     // Config
-    val TotalSize = 256  // kB
+    val TotalSize = 64  // B
     val PAddrBits = BUNDLE_PARAM.ADDR_WIDTH
     val LineSize = 64   // Byte
-    val Ways = 4
-    val Banks = 8
+    val Ways = 1
+    val Banks = 1
     val nMissEntries = 64
 
     val LineBeats = LineSize / 8    // Data Width 64bits
-    val Sets = TotalSize * 1024 /*  * 1024 *// LineSize / Ways 
-    val BankSets = TotalSize * 1024 /* * 1024 */ / LineSize / Ways / Banks
+    val Sets = TotalSize  /*  * 1024 *// LineSize / Ways 
+    val BankSets = TotalSize  /* * 1024 */ / LineSize / Ways / Banks
     val OffsetBits = log2Up(LineSize)
     val SetBits = log2Up(Sets)
     val BankBits = log2Up(Banks)

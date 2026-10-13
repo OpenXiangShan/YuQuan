@@ -34,7 +34,7 @@ class AXI_READIO extends Bundle{
     val axi_rio = new AXI_RIO()        
     //UI read
     val ui_ario = Decoupled(new CMDIO())
-    val ui_rio  = Flipped(Decoupled(new RdDataIO()))
+    val ui_rio  = Flipped(new ui_rdadtaIO())
     //consis
     val rconsis =   Input(Bool())
     val consis_addr_io  = new CONS_ADDR_IO()
@@ -83,7 +83,7 @@ val r_axi_consis_table                               = Module(new osmc_axi_consi
     ui_rdback_cnt                                   := Mux( io.axi_rio.rlast &io.axi_rio.rvalid &io.axi_rio.rready, ui_rdback_cnt + 1.U, ui_rdback_cnt)
 /*********************************************************************************************************************************************************/
     u_axi_read_burst_clip.io.UnSplitCommandQueue    :<>= UnSplitCommandQueue.io.deq
-    UnSplitCommandQueue.io.enq.valid                := io.axi_ario.arvalid & (~io.rconsis)
+    UnSplitCommandQueue.io.enq.valid                := io.axi_ario.arvalid & (~io.rconsis) & io.apb_config_done 
     UnSplitCommandQueue.io.enq.bits.addr            := io.axi_ario.araddr 
     UnSplitCommandQueue.io.enq.bits.len             := io.axi_ario.arlen
     UnSplitCommandQueue.io.enq.bits.burst           := io.axi_ario.arburst

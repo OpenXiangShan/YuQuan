@@ -26,6 +26,7 @@ trait CommonModule extends SbtModule with ScalafmtModule {
 }
 
 object OpenMc extends CommonModule { m =>
+  override def mainClass = Some("test")
   object test extends SbtModuleTests with TestModule.ScalaTest with ScalafmtModule {
     override def ivyDeps = m.ivyDeps() ++ Agg(
       ivy"org.scalatest::scalatest::3.2.16"

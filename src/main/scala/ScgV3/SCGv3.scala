@@ -38,9 +38,12 @@ class SCG_V3 extends Module {
     val dfi      = new dfiBundle
     val AsScgCmd = Vec(all_bank_num, Flipped(Decoupled(new fifo_adr(1))))
     val globalWdata = new globalWdataIO(WriteTokenWidth)
-    val ScgAsRddata = Decoupled(new RdDataIO(TOKENBITS))
+    val Scg2AxiRddata = Decoupled(new RdDataIO())
+    val Scg2CacheRddata = Decoupled(new RdDataIO(TOKENBITS-1))
     val scgregio    = Flipped(new SCGRegIO)
     val SchedulerQueueIsEmpty = Flipped(Bool())
+    val schedulerPendingSameRowHit = Flipped(Vec(all_bank_num, Bool()))
+    val openRowState = Vec(all_bank_num, Valid(UInt(BUNDLE_PARAM.ROW_WIDTH.W)))
     val calDone     = Flipped(Bool())
   })
   dontTouch(io)
@@ -57,6 +60,7 @@ class SCG_V3 extends Module {
   val phaseCtrl   = Module(new DFIPhaseCtrl(WriteTokenWidth)).io
   val dfiAdapter  = Module(new DFIAdapter).io
   val ddr_init    = Module(new ddr4_init(BUNDLE_PARAM.BGBITS,BUNDLE_PARAM.BABITS,BUNDLE_PARAM.ABITS)).io
+  val statistics  = Module(new Statistics(all_bank_num)).io
 //==============================================================================================
 //                         feed sub modules' input ports
 //==============================================================================================
@@ -72,6 +76,13 @@ class SCG_V3 extends Module {
     cmdGen(i).request :<>= io.AsScgCmd(i)
     cmdGen(i).requestID :<>= i.U.asTypeOf(cmdGen(i).requestID)
     cmdGen(i).refCtrl :<>= refresh.refCmdGen(i)
+    // cmdGen(i).hasWrite := dfiHasWrite & (i.U === phaseCtrl.write_bank)
+    cmdGen(i).clspgTmInit := io.scgregio.clspgTmInit
+    cmdGen(i).prePolicy := io.scgregio.prePolicy
+    cmdGen(i).pendingSameRowHit := io.schedulerPendingSameRowHit(i)
+    io.openRowState(i).valid := cmdGen(i).openRowState.valid
+    io.openRowState(i).bits := cmdGen(i).openRowState.bits
+    statistics.bankStatis(i) := cmdGen(i).statis
   }
 
   // timingArb
@@ -154,12 +165,12 @@ class SCG_V3 extends Module {
   dfiAdapter.dfi_read_ph  := phaseCtrl.dfi_read_ph
   dfiAdapter.dfi_rddata_in <> io.dfi.dfirddata
   dfiAdapter.dfi_parameter_mode := io.scgregio.dfiMode
-  dfiAdapter.tphy_wrlat   := io.scgregio.tphyWrlat
-  dfiAdapter.tphy_wrcslat := io.scgregio.tphyWrcslat
-  dfiAdapter.tphy_wrdata  := io.scgregio.tphyWrdata
-  dfiAdapter.trddata_en   := io.scgregio.trddataEn
-  dfiAdapter.tphy_rdcslat := io.scgregio.tphyRdcslat
-  dfiAdapter.tphy_rdlat   := io.scgregio.tphyRdlat
+  dfiAdapter.tphy_wrlat   := io.scgregio.tphyWrlat << 1
+  dfiAdapter.tphy_wrcslat := io.scgregio.tphyWrcslat << 1
+  dfiAdapter.tphy_wrdata  := io.scgregio.tphyWrdata << 1
+  dfiAdapter.trddata_en   := io.scgregio.trddataEn << 1
+  dfiAdapter.tphy_rdcslat := io.scgregio.tphyRdcslat << 1
+  dfiAdapter.tphy_rdlat   := io.scgregio.tphyRdlat << 1
   dfiAdapter.wr_odt_delay    := io.scgregio.wrOdtDelay
   dfiAdapter.wr_odt_hold     := io.scgregio.wrOdtHold
   dfiAdapter.rd_odt_delay    := io.scgregio.rdOdtDelay
@@ -174,10 +185,8 @@ class SCG_V3 extends Module {
 //==============================================================================================
 //                         feed top module's output ports
 //==============================================================================================
-  io.ScgAsRddata.valid := rd_data_buf.dataOut.valid
-  io.ScgAsRddata.bits.rdata := rd_data_buf.dataOut.bits.data
-  io.ScgAsRddata.bits.rtoken := rd_data_buf.dataOut.bits.token
-  rd_data_buf.dataOut.ready := io.ScgAsRddata.ready
+  io.Scg2AxiRddata   <> rd_data_buf.Data2Axi
+  io.Scg2CacheRddata <> rd_data_buf.Data2Cache
 
   io.dfi.dfiwrdata <> dfiAdapter.dfi_wrdata_ch_out
   io.dfi.dfictrl <> dfiAdapter.dfi_ctrl_out

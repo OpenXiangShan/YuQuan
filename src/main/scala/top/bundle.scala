@@ -53,7 +53,6 @@ class WrDataIO extends Bundle{
     val wstrb  = UInt(BUNDLE_PARAM.STRB_WIDTH.W)
 }
 
-
 class WriteReqIO(Token_Width : Int = BUNDLE_PARAM.TOKEN_WIDTH) extends Bundle{
     val cmd   = new CMDIO(Token_Width)
     val data  = new WrDataIO()
@@ -73,8 +72,6 @@ class fifo_adr (width : Int )extends Bundle{
     val adr      = new adr
 }
 class txn_fifo_adr extends fifo_adr(1)
-// class cmd_fifo_adr extends fifo_adr(3)
-// class fifolinkRG   extends fifo_adr(3)
 class ReflinkRG (width : Int)extends Bundle{
     val slave         = new ReflinkRG_in
     val master        = new ReflinkRG_out(width)
@@ -101,48 +98,6 @@ class RefTime extends  Bundle{
     val tRFC       = UInt(BUNDLE_PARAM.McParamWidth.W)
     val RefreshMode= UInt(2.W)
 }
-class TClinkRG extends Bundle{
-    val tRRD_L_OK    = Flipped(Bool())
-    val tRRD_S_OK    = Flipped(Bool())
-    val tFAW_OK      = Flipped(Bool())
-    val tRAS_OK      = Flipped(Vec((1<<BUNDLE_PARAM.BGBITS),Bool()))
-    val tRCD_OK      = Flipped(Vec((1<<BUNDLE_PARAM.BGBITS),Bool()))
-    val tRP_OK       = Flipped(Vec((1<<BUNDLE_PARAM.BGBITS),Bool()))
-    val tCCD_L_OK    = Flipped(Bool())
-    val tCCD_S_OK    = Flipped(Bool())
-    val tWR_OK       = Flipped(Vec((1<<BUNDLE_PARAM.BGBITS),Bool()))
-    val tRTW_OK      = Flipped(Bool())
-    val tRTP_OK      = Flipped(Vec((1<<BUNDLE_PARAM.BGBITS),Bool()))
-    val tWTR_L_OK    = Flipped(Bool())
-    val tWTR_S_OK    = Flipped(Bool())
-
-    val tW2WDR_OK    = Flipped(Bool())
-    val tW2RDR_OK    = Flipped(Bool())
-    val tR2RDR_OK    = Flipped(Bool())
-    val tR2WDR_OK    = Flipped(Bool()) 
-}
-class arblinkRG extends Bundle{
-    val in          = new arblinkRG_in
-    val out         = new arblinkRG_out
-}
-class arblinkRG_out extends Bundle{
-    val Cas_PopReq      = UInt(1.W)
-    val Act_PopReq      = UInt(1.W)
-    val Pre_PopReq      = UInt(1.W)
-    val preReq          = Bool()
-    val actReq          = Bool()
-    val readReq         = Bool()
-    val writeReq        = Bool()
-    val actAdr          = new adr()
-    val preAdr          = new adr()
-    val casAdr          = new adr()
-}
-class arblinkRG_in extends Bundle{
-    val Pre_PopOK      =  Flipped(Bool())
-    val Cas_PopOK      =  Flipped(Bool())
-    val Act_PopOK      =  Flipped(Bool())
-    // val won            =  Flipped(new WonCmd2TC) 
-}
 
 class  TCtime extends Bundle{
     val  tRRD_S         = UInt(BUNDLE_PARAM.McParamWidth.W)
@@ -167,59 +122,6 @@ class  TCtime extends Bundle{
     val  tW2RDR         = UInt(BUNDLE_PARAM.McParamWidth.W)
     val  tR2RDR         = UInt(BUNDLE_PARAM.McParamWidth.W)
     val  tR2WDR         = UInt(BUNDLE_PARAM.McParamWidth.W)       
-}
-// class arb2TC      extends Bundle{
-//     val  wonwrite       = Bool()
-//     val  wonread        = Bool()
-//     val  wonact         = Bool()
-//     val  wonpre         = Bool()
-//     val  wonCasBG       = UInt(BUNDLE_PARAM.BGBITS.W)
-//     val  wonCasBA       = UInt(BUNDLE_PARAM.BABITS.W)
-//     val  wonPreBG       = UInt(BUNDLE_PARAM.BGBITS.W)
-//     val  wonPreBA       = UInt(BUNDLE_PARAM.BABITS.W)
-//     val  wonActBG       = UInt(BUNDLE_PARAM.BGBITS.W)
-//     val  wonActBA       = UInt(BUNDLE_PARAM.BABITS.W)
-
-// }
-class RGlinkTC  extends Bundle{  // reload TC timer counter
-    val act_req         = Bool()
-    val act_bg          = UInt(BUNDLE_PARAM.BGBITS.W)
-    val act_ba          = UInt(BUNDLE_PARAM.BABITS.W)
-    val act_rank        = UInt(BUNDLE_PARAM.RANK_WIDTH.W)
-    val write_req       = Bool()
-    val read_req        = Bool()
-    val cas_bg          = UInt(BUNDLE_PARAM.BGBITS.W)
-    val cas_ba          = UInt(BUNDLE_PARAM.BABITS.W)
-    val cas_rank        = UInt(BUNDLE_PARAM.RANK_WIDTH.W)
-    val pre_req         = Bool()
-    val pre_bg          = UInt(BUNDLE_PARAM.BGBITS.W)
-    val pre_ba          = UInt(BUNDLE_PARAM.BABITS.W)   
-    val pre_rank        = UInt(BUNDLE_PARAM.RANK_WIDTH.W)    
-    // val bank            = UInt(BUNDLE_PARAM.BABITS.W)
-}
-class arb2RG extends Bundle{
-    val    arbout       = Flipped(Vec(1<<(BUNDLE_PARAM.RANK_WIDTH+BUNDLE_PARAM.BGBITS),new arblinkRG_in))
-    val    arbin        = Flipped(Vec(1<<(BUNDLE_PARAM.RANK_WIDTH+BUNDLE_PARAM.BGBITS),new arblinkRG_out))
-}
-class arb2widthMatch extends Bundle{
-       val      actReq        =  Bool()
-       val      winRankAT     =  UInt(BUNDLE_PARAM.RANK_WIDTH.W)
-       val      winGroupA     =  UInt(BUNDLE_PARAM.BGBITS.W) 
-       val      winBankAT     =  UInt(BUNDLE_PARAM.BABITS.W)
-       val      winROW        =  UInt(BUNDLE_PARAM.ABITS.W)
-       val      winROWP       =  UInt(BUNDLE_PARAM.ABITS.W)
-       val      writeReq      =  Bool()
-       val      readReq       =  Bool()
-       val      rankCas       =  UInt(BUNDLE_PARAM.RANK_WIDTH.W)
-       val      readToken     =  UInt(BUNDLE_PARAM.TOKENBITS.W)
-       val      groupCas      =  UInt(BUNDLE_PARAM.BGBITS.W)
-       val      bankCas       =  UInt(BUNDLE_PARAM.BABITS.W)
-       val      winCOL        =  UInt(BUNDLE_PARAM.COLBITS.W)
-       val      preReq        =  Bool()
-       val      rankP         =  UInt(BUNDLE_PARAM.RANK_WIDTH.W)
-       val      winGroupP     =  UInt(BUNDLE_PARAM.BGBITS.W)
-       val      winBankP      =  UInt(BUNDLE_PARAM.BABITS.W)
-       val      arb2WM_refInt =  new ReflinkArb
 }
 // dfi interface
 class dfiBundle extends Bundle {
@@ -333,45 +235,4 @@ class AS2SCG extends Bundle {
   val priority = Input(Bool())
   val wrData   = Input(UInt(BUNDLE_PARAM.DATABITS.W))
   val dataMask = Input(UInt((BUNDLE_PARAM.DATABITS >> 3).W))
-}
-//read data 2 AS
-class R2AS extends Bundle {
-  val rdData = Output(UInt(BUNDLE_PARAM.DATA_WIDTH.W))
-  val token  = Output(UInt(BUNDLE_PARAM.TOKENBITS.W))
-}
-class group2CD extends Bundle{
-    val preReq      =  Input(Bool())
-    val refReq      =  Input(Bool())
-    val zqReq       =  Input(Bool())
-    val writeReq    =  Input(Bool())
-    val readReq     =  Input(Bool())
-    val actReq      =  Input(Bool())
-    val row         =  Input(UInt(BUNDLE_PARAM.ABITS.W))
-    val col         =  Input(UInt(BUNDLE_PARAM.COLBITS.W))
-    val rank        =  Input(UInt(BUNDLE_PARAM.RKBITS.W))
-    val bank        =  Input(UInt(BUNDLE_PARAM.BABITS.W))
-    val BG          =  Input(UInt(BUNDLE_PARAM.BGBITS.W))
-
-}
-class TC2REF  extends Bundle{
-    val  RTP_OK        = Bool()
-    val  RAS_OK        = Bool()
-    val  WTP_OK        = Bool() 
-}
-class WonCmd2TC extends Bundle{
-    val  write_phase0    = Bool()
-    val  write_phase1    = Bool()
-    val  read_phase0     = Bool()
-    val  read_phase1     = Bool()
-    val  pre_phase0      = Bool()
-    val  pre_phase1      = Bool()
-    val  act_phase0      = Bool()
-    val  act_phase1      = Bool()
-    val  dfi_phase0_rank = UInt(BUNDLE_PARAM.RANK_WIDTH.W)
-    val  dfi_phase1_rank = UInt(BUNDLE_PARAM.RANK_WIDTH.W)
-    val  dfi_phase0_bg   = UInt(BUNDLE_PARAM.BGBITS.W) 
-    val  dfi_phase0_ba   = UInt(BUNDLE_PARAM.BABITS.W)
-    val  dfi_phase1_bg   = UInt(BUNDLE_PARAM.BGBITS.W) 
-    val  dfi_phase1_ba   = UInt(BUNDLE_PARAM.BABITS.W)
-
 }

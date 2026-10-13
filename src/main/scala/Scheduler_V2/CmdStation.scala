@@ -75,7 +75,6 @@ class AgeDetector(numEntries: Int, numEnq: Int, regOut: Boolean = true) extends 
 
   io.out := (if (regOut) best else nextBest)
 
-
   def getMuskedOldest(musk:UInt) = {
     VecInit((0 until numEntries).map { i =>
       val isMasked = musk(i)
@@ -105,6 +104,8 @@ class CmdStation[T <: SplitCmdIO](entNum:Int = 16, gen:T, org: StationOrg.Value,
     val cmdDetect     = Flipped(Valid(new SplitCmdIO))
     val conflict      = Bool()
     val cmdOut        = Vec(flowNum, Decoupled(gen))
+    val openRowProbe  = Flipped(Vec(flowNum, Valid(UInt(BUNDLE_PARAM.ROW_WIDTH.W))))
+    val pendingSameRowHit = Output(Vec(flowNum, Bool()))
     val low           = Bool()
     val high          = Bool()
     val VldentryNum   = UInt((log2Ceil(entNum)+1).W)
@@ -153,10 +154,16 @@ class CmdStation[T <: SplitCmdIO](entNum:Int = 16, gen:T, org: StationOrg.Value,
   // cmd out
   val age_deq = WireInit(VecInit.fill(entNum)(false.B))
   val hitVec = VecInit.tabulate(flowNum)(i => VecInit(vldFlow(i) zip cmdSlot map {case (vld, slot) => vld && prevRow(i) === slot.row}))
+  val pendingRowHitVec = VecInit.tabulate(flowNum)(i => VecInit(vldFlow(i) zip cmdSlot map {
+    case (vld, slot) => vld && io.openRowProbe(i).valid && slot.row === io.openRowProbe(i).bits
+  }))
   dontTouch(hitVec)
   dontTouch(vldFlow)
   dontTouch(vld)
   dontTouch(empty)
+  for (i <- 0 until flowNum) {
+    io.pendingSameRowHit(i) := pendingRowHitVec(i).reduce(_|_)
+  }
   for (i <- 0 until flowNum) {
     io.cmdOut(i).valid := false.B
     io.cmdOut(i).bits  := DontCare

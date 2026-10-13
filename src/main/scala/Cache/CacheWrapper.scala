@@ -77,7 +77,7 @@ sealed class CacheWraperIO extends CacheBundle {
 
     // Interface With AS
     val RdCmd2AS = Decoupled(new SplitCmdIO(cTokenLen))
-    val dataFromAS = Flipped(Decoupled(new DataIO(cTokenLen)))
+    val dataFromAS = Flipped(Decoupled(new RdDataIO(cTokenLen)))
     val WrCmd2AS = Decoupled(new SplitCmdIO)
     val WrData2AS = Decoupled(new WrDataIO)
 }
@@ -85,11 +85,11 @@ sealed class CacheWraperIO extends CacheBundle {
 class CacheWraper extends CacheModule {
     val io = FlatIO(new CacheWraperIO)
 
-    val requestQueue = Module(new RequestQueue)
+    val requestQueue = Module(new RequestQueue(qDepth = 1))
     val mainPipe = Module(new MainPipe_by)
     val refillPipe = Module(new RefillPipe_by) 
-    val writeCombineBuf = Module(new WCB_by)
-    val missRegister = Module(new MSHR_by)
+    val writeCombineBuf = Module(new WCB_by(wcb_depth = 1))
+    val missRegister = Module(new MSHR_by(mshr_depth = 1))
 
     val tagArray = Module(new BankedTagArray_by)
     val dataArray = Module(new BankedDataArray_by)

@@ -109,36 +109,37 @@ class APBSlvtop extends RawModule with HasRegConst {
         val schedulerrd = RegInit(UInt(regBits.W), "h0000_8040".U)
   
         // scg
-        val scgtmchk0 = RegInit(UInt(regBits.W), "h1061a410".U)//tRRD_S/tRRD_L/tFAW/tRCD/tRP
-        val scgtmchk1 = RegInit(UInt(regBits.W), "h0408040a".U)//tCCD_S/tCCD_L/tWTR_S/tWTR_L
-        val scgtmchk2 = RegInit(UInt(regBits.W), "h0c140a2a".U)//tRTW/tWR/tRTP/tRAS
-        val scgtmchk3 = RegInit(UInt(regBits.W), "h00000c08".U)//al/rl/wl/bl 
-        val scgref0 = RegInit(UInt(regBits.W), "h80".U)//tzqintvl 128
-        val scgref1 = RegInit(UInt(regBits.W), "h1b58".U)//tREFI
-        val scgref2 = RegInit(UInt(regBits.W), "h19080".U)//tRFC/tZQCS
-        val scgdfi0 = RegInit(UInt(regBits.W), "h900000c".U)   
-        val scgdfi1 = RegInit(UInt(regBits.W), "h202".U)
-        val scgdfi2 = RegInit(UInt(regBits.W), "h15041504".U)
+        //DDR4-3200 defconfig
+        val scgtmchk0 = RegInit(UInt(regBits.W), "h10822516".U)//tRRD_S = 4 nck /tRRD_L = 8 nck /tFAW = 34 nck /tRCD = 20 nck /tRP = 22 nck
+        val scgtmchk1 = RegInit(UInt(regBits.W), "h0408040c".U)//tCCD_S = 4 nck /tCCD_L = 8 nck /tWTR_S = 4 nck /tWTR_L = 12 nck 
+        val scgtmchk2 = RegInit(UInt(regBits.W), "h0a180c34".U)//tRTW = 10 nck /tWR = 24 nck /tRTP = 12 nck /tRAS = 52 nck
+        val scgtmchk3 = RegInit(UInt(regBits.W), "h00141008".U)//al = 0 /rl = 20 nck /wl = 16 nck /bl = 8 
+        val scgref0 = RegInit(UInt(regBits.W), "h80".U)//tzqintvl 128 nck
+        val scgref1 = RegInit(UInt(regBits.W), "h00001e87".U)//tREFI = 7800 ns
+        val scgref2 = RegInit(UInt(regBits.W), "h00015e80".U)//tRFC = 350 ns /tZQCS = 128 ms
+        val scgdfi0 = RegInit(UInt(regBits.W), "h8000006".U)//tphy_wrlat / tphy_wrcslat / tphy_wrdata / trddata_en : dif的参数全部以dfi_phy clk为单位设置    
+        val scgdfi1 = RegInit(UInt(regBits.W), "h202".U)//tphy_rdcslat / tphy_rdlat 
+        val scgdfi2 = RegInit(UInt(regBits.W), "h15041504".U)//wr_odt_delay / wr_odt_hold / rd_odt_delay / rd_odt_hold 
         val scgdfi3 = RegInit(UInt(regBits.W), "h1".U)  //dfi mode
-        val scgclspg = RegInit(UInt(regBits.W), "h190".U)
+        val scgclspg = RegInit(UInt(regBits.W), "h0000008d".U)//page policy : close page timer = 35 
         val scgdebug = Wire(UInt(regBits.W))
         val scgmcctrl = RegInit(UInt(regBits.W), "h0".U)
         val scgddrstat = Wire(UInt(regBits.W))
-        val scginitmparam0 = RegInit(UInt(regBits.W), "h1d4f0145".U)
-        val scginitmparam1 = RegInit(UInt(regBits.W), "h928b018".U)
-        val scginitmparam2 = RegInit(UInt(regBits.W), "h8400".U)
-        val scgmrsmode0 = RegInit(UInt(regBits.W), "h10a30".U)
-        val scgmrsmode1 = RegInit(UInt(regBits.W), "h180000".U)
-        val scgmrsmode2 = RegInit(UInt(regBits.W), "h40".U)
-        val scgmrsmode3 = RegInit(UInt(regBits.W), "h800".U)
+        val scginitmparam0 = RegInit(UInt(regBits.W), "h000d0145".U)//dram_reset and post_cke 
+        val scginitmparam1 = RegInit(UInt(regBits.W), "h00005018".U)//pre_cke and mrs2other
+        val scginitmparam2 = RegInit(UInt(regBits.W), "h00008400".U)//mrs2mrs and tZQinit 
+        val scgmrsmode0 = RegInit(UInt(regBits.W), "h00010044".U)//mrs1 and mrs0 cl = 20 BL = 8 DLL on
+        val scgmrsmode1 = RegInit(UInt(regBits.W), "h00000028".U)//mrs3 and mrs2 CWL = 16 
+        val scgmrsmode2 = RegInit(UInt(regBits.W), "h00400000".U)//mrs5 and mrs4 
+        val scgmrsmode3 = RegInit(UInt(regBits.W), "h00001000".U)//mrs6 tccd_l = 8
         val scggeardownmode = RegInit(UInt(regBits.W), "h40404040".U)
-        val scgraparam = RegInit(UInt(regBits.W), "h0a0a0e04".U)
+        val scgraparam = RegInit(UInt(regBits.W), "h0a0a0c0a".U)//diff rank parameters,w2w = 10 nck  ,w2r = 10 nck ,r2r = 12 nck ,r2w = 10 
 
         val scgdebugcd = Wire(UInt(regBits.W))
         val scgmcctrlcd = Wire(UInt(regBits.W))
         val scgddrstatcd = Wire(UInt(regBits.W))
 
-        val scgctrl = RegInit(UInt(regBits.W), "h0".U)
+        val scgctrl = RegInit(UInt(regBits.W), "h1".U)//burst refresh mode 
 
         // apbcfg done
         val apbcfg = RegInit(UInt(regBits.W), "h0".U)
