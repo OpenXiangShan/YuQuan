@@ -9,7 +9,7 @@ import scalalib._
 import mill.bsp._
 
 trait CommonModule extends SbtModule with ScalafmtModule {
-  override def millSourcePath = os.pwd
+  override def millSourcePath = millOuterCtx.millSourcePath
   override def scalaVersion = "2.13.12"
   override def scalacOptions = Seq(
     "-language:reflectiveCalls",
